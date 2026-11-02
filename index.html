@@ -121,6 +121,7 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
 .mine-cal.pk{background:var(--pick-bg);border-color:transparent}.mine-cal.pk .sb b{color:var(--pick)}
 .mine-cal.op{border:2px dashed var(--pick)}.mine-cal.op .sb b{color:var(--pick);font-size:14px}.mine-cal.op .sb span{font-family:var(--f-body);color:var(--pick)}
 .off{color:var(--muted);font-family:var(--f-body)}
+.mine-cal.no .sb .alt{text-decoration:none;color:var(--pick);font-family:var(--f-body);font-size:10px;font-weight:700}
 .expand{grid-column:1/-1;background:var(--panel);border:1px solid var(--sel);border-radius:10px;padding:4px 10px 10px;margin:2px 0 6px;scroll-margin-top:170px;scroll-margin-bottom:80px}
 .expand .tlw{border:0;padding:0;background:transparent}
 .expand .dhead{flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:8px 0}
@@ -184,6 +185,9 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
 .pinrow{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
 .pinrow .role{color:var(--muted);font-size:12px;margin-left:4px}
 .pinrow input{min-width:0}
+.verrow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 10px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
+.verrow .acts{display:flex;gap:6px}
+.verdiff{background:var(--bg);border-radius:8px;padding:8px 10px;font-size:13px;display:flex;flex-direction:column;gap:2px}
 .pinval{font-family:var(--f-mono);font-size:16px;font-weight:600;letter-spacing:.15em}
 @media (prefers-reduced-motion:no-preference){.shift{transition:background .15s}}
 </style>
@@ -406,9 +410,9 @@ function renderMe(){
         <div class="seg"><button data-ok="${a.id}" class="${no?"":"on-ok"}" aria-pressed="${!no}">可以</button><button data-no="${a.id}" class="${no?"on-no":""}" aria-pressed="${no}">不能</button></div></div>`;}
     if(p)ph+=`<div class="shift picked"><div class="info"><div class="k">${p.k}班｜補選</div><div class="tm">${p.t}</div></div><button class="btn" data-unpick="${esc(p.key)}">取消</button></div>`;
     const others={};for(const [k,q] of Object.entries(REQ))if(k!=="p"+me&&q.status==="pending")(q.pick||[]).forEach(x=>others[x.key]=(others[x.key]||0)+1);
-    const ds=(slotsBy[selMe]||[]).filter(x=>!p&&!a);
+    const ds=(slotsBy[selMe]||[]).filter(x=>!p&&(!a||(draft.decline.has(a.id)&&x.t!==a.t)));
     if(ds.length){
-      ph+=`<div class="k" style="margin-top:4px">這天可以排的班：</div>`;
+      ph+=`<div class="k" style="margin-top:4px">${a?"這個時段不行的話，可以改上這天其他時段（不改也可以）：":"這天可以排的班："}</div>`;
       for(const s of ds){const why=pickBlock(me,s,draft.decline,picks);
         ph+=`<div class="shift"><div class="info"><div class="k">${s.k}班｜${s.open?`<span class="why soft">缺人</span>`:"可加入"}${others[s.key]?`｜<span class="why soft">${others[s.key]} 人申請中</span>`:""}</div><div class="tm">${s.t}</div>${why?`<div class="why">${why}</div>`:""}</div>
           <button class="btn${why?"":" pri"}" data-pick="${esc(s.key)}" ${why?"disabled":""}>選這班</button></div>`;}
@@ -418,7 +422,7 @@ function renderMe(){
     if(P.r==="兼職"&&ds.length)ph+=`<p class="note">只選你可以上的時段，主管核准時會再對一次。</p>`;
   }
 
-  if(diff>0)h+=`<div class="banner warn" id="gap"><b>還少 ${diff} 班</b>：點日曆上<b>虛線框（可選）</b>的日期，挑一天補班。</div>`;
+  if(diff>0)h+=`<div class="banner warn" id="gap"><b>還少 ${diff} 班</b>：點紅色日期可以改上同一天的其他時段，或點<b>虛線框（可選）</b>的日期補班。</div>`;
   h+=`<div class="cal">${calHead()}`;
   calCells().forEach((d,i,arr)=>{
     const md=1100+d,day=DAY_BY_MD[md];
@@ -427,7 +431,7 @@ function renderMe(){
     let cls="",body="";
     if(a&&!draft.decline.has(a.id)){cls="ok";body=`<b>${a.k}</b>${tm2(a.t)}`;}
     else if(p){cls="pk";body=`<b>補${p.k}</b>${tm2(p.t)}`;}
-    else if(a){cls="no";body=`<b>不能</b>${tm2(a.t)}`;}
+    else if(a){cls="no";const alt=(slotsBy[md]||[]).some(s=>s.t!==a.t&&!pickBlock(me,s,draft.decline,picks));body=`<b>不能</b>${tm2(a.t)}${alt?`<span class="alt">可改時段</span>`:""}`;}
     else if(needPick&&slotsBy[md]){const n=slotsBy[md].filter(s=>!pickBlock(me,s,draft.decline,picks)).length;
       cls=n?"op":"";body=n?`<b>${n}</b><span>可選</span>`:`<span class="off">休</span>`;}
     else body=`<span class="off">休</span>`;
@@ -616,6 +620,7 @@ async function decide(ids,ok){
       if(!left){upd.status=rej.length?"rejected":"approved";if(rej.length)upd.reply=reply;}
       await db.doc("req/"+k).update(upd);
     }
+    if(ok&&items.length>fail.length){const who=[...new Set(items.map(x=>x.n))].join("、");try{await mutate(pl=>pushVersion(pl,`核准 ${who}`));}catch(e){}}
     busyAdmin=false;toast(fail.length?`部分沒處理：${fail.join("；")}`:ok?`已核准 ${items.length} 項`:`已退回 ${items.length} 項`,fail.length?"err":"ok");
   }catch(e){busyAdmin=false;toast("處理失敗："+(e&&e.code||"請再試一次"),"err");}
 }
@@ -648,7 +653,7 @@ async function importDK(raw){return crypto.subtle.importKey("raw",raw,"AES-GCM",
 /* ---------- 資料存放（加密後放在網路存放處） ---------- */
 const BLOB="cb8d4a38b861",API="https://json.extendsclass.com/bin/"+BLOB;
 let DK=null,DKraw=null,PINSET={},lastLoad=0,loginState=null; // loginState: {matches:[pi], pin}
-function applyPayload(p){PEOPLE=(p.people||[]).map(([n,r,up,from],i)=>({n,r,up,i,from}));ASSIGN=p.assign||{};REQ=p.req||{};PINSET=p.pinSet||{};
+function applyPayload(p){VERS=p.versions||[];PEOPLE=(p.people||[]).map(([n,r,up,from],i)=>({n,r,up,i,from}));ASSIGN=p.assign||{};REQ=p.req||{};PINSET=p.pinSet||{};
   loaded.a=loaded.r=true;lastLoad=Date.now();render();}
 async function getJson(){const r=await fetch(API,{cache:"no-store",headers:{Accept:"application/json"}});if(!r.ok)throw{code:"連線 "+r.status};return r.json();}
 async function decPayload(j){if(!j||!j.data)throw{code:"資料不見了"};try{return JSON.parse(td.decode(await aesDec(DK,j.data)));}catch(e){throw{code:"資料打不開"};}}
@@ -737,7 +742,7 @@ async function loadAdminKey(adminPin,j){
       for(const k of Object.keys(jj.wraps))if(/^p\d+$/.test(k))delete jj.wraps[k];
       people.forEach(([n,r],i)=>{if(r==="主管")return;const p=randPin(used);used.add(p);pins["p"+i]=p;});
       for(const [k,p] of Object.entries(pins))jj.wraps[k]=await wrapKey(p,DKraw);
-      jj.adm={s,...await aesEnc(ak,te.encode(JSON.stringify(pins)))};delete pl.pinSet;});
+      jj.adm={s,...await aesEnc(ak,te.encode(JSON.stringify(pins)))};delete pl.pinSet;if(!(pl.versions||[]).length)pushVersion(pl,"初始班表");});
     j=await getJson();
   }
   AK=await kek(adminPin,j.adm.s);PINS=JSON.parse(td.decode(await aesDec(AK,j.adm)));
@@ -752,6 +757,42 @@ async function setPin(pi,pin){
       j.wraps["p"+pi]=await wrapKey(pin,DKraw);j.adm={s:j.adm.s,...await aesEnc(AK,te.encode(JSON.stringify(cur)))};PINS=cur;});
     busyAdmin=false;toast(`${PEOPLE[pi].n} 的密碼改成 ${pin}`);}
   catch(e){busyAdmin=false;toast("設定失敗："+(e&&e.code||"請再試一次"),"err");}
+}
+/* ---------- 班表版本（主管用，依日期時間保存） ---------- */
+const VMAX=30;
+const TIMES=[...new Set(CFG.types.flatMap(t=>t.shifts.map(x=>x[1])))];
+function encAssign(assign){return Object.values(assign).map(a=>`${a.md-1100}.${a.pi}.${TIMES.indexOf(a.t)}`).join(";");}
+function decAssign(str){const o={};if(!str)return o;
+  for(const part of str.split(";")){const [d,pi,ti]=part.split(".").map(Number);const md=1100+d,t=TIMES[ti],P=PEOPLE[pi];if(!P||!t||!DAY_BY_MD[md])continue;
+    const [a,b]=t.split("-").map(x=>{const [h,m]=x.split(":").map(Number);return h+m/60;});const s0=a,e0=b<=a?b+24:b;
+    const tpl=CFG.types[DAY_BY_MD[md].type].shifts.find(x=>x[1]===t);const k=tpl?tpl[2]:(s0<12?"早":s0<16?"中":"晚");
+    o[`${md}-${pi}`]={md,pi,n:P.n,r:P.r,t,k,s:s0,e:e0};}
+  return o;}
+function pushVersion(pl,note){const v=(pl.versions=pl.versions||[]);v.unshift({at:Date.now(),note,a:encAssign(pl.assign||{})});if(v.length>VMAX)v.length=VMAX;}
+let VERS=[],verOpen=null,verArm=null;
+function verDiff(oldA,newA){ // 從 oldA 變成 newA 的差異
+  const ch=[];const keys=new Set([...Object.keys(oldA),...Object.keys(newA)]);
+  for(const k of keys){const o=oldA[k],n=newA[k];if(o&&n&&o.t===n.t)continue;const x=n||o;ch.push({md:x.md,pi:x.pi,n:x.n,from:o?o.t:"休",to:n?n.t:"休"});}
+  return ch.sort((a,b)=>a.md-b.md||a.pi-b.pi);}
+async function saveVersion(){const note=(($("vnote")||{}).value||"").trim()||"手動存版";
+  busyAdmin=true;toast("存版本中…","busy");
+  try{await mutate(pl=>{pushVersion(pl,note);});busyAdmin=false;toast("已存成新版本");}catch(e){busyAdmin=false;toast("存版本失敗："+(e&&e.code||"錯誤"),"err");}}
+async function restoreVersion(i){
+  if(verArm!==i){verArm=i;render();return;}
+  verArm=null;const v=VERS[i];if(!v)return;busyAdmin=true;toast("還原中…","busy");
+  verOpen=null;try{await mutate(pl=>{pushVersion(pl,"還原前自動保存");pl.assign=decAssign(v.a);pushVersion(pl,`還原到 ${fmtAt(v.at)} 的版本`);});busyAdmin=false;toast(`已還原到 ${fmtAt(v.at)} 的版本`);}
+  catch(e){busyAdmin=false;toast("還原失敗："+(e&&e.code||"錯誤"),"err");}}
+const fmtAt=t=>{const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
+function versionsHtml(){
+  let h=`<h2>班表版本</h2><div class="card"><p class="note" style="margin:0">每次核准都會自動存一版，也可以自己存一版並寫上名稱。最多保留最近 ${VMAX} 版。還原時會先自動保存目前的班表，不怕還原錯。</p>
+    <div class="row"><input id="vnote" class="reply" style="flex:1;min-width:0" maxlength="30" placeholder="版本名稱，例如：11 月定稿"><button class="btn pri" data-vsave="1" ${busyAdmin?"disabled":""}>存目前版本</button></div>`;
+  if(!VERS.length)h+=`<div class="empty" style="padding:12px">還沒有任何版本，先按「存目前版本」存一份。</div>`;
+  VERS.forEach((v,i)=>{const A=decAssign(v.a);const d=verDiff(A,ASSIGN);const cnt=Object.keys(A).length;
+    h+=`<div class="verrow"><div><b class="tm">${fmtAt(v.at)}</b> <span>${esc(v.note||"")}</span><div class="note" style="margin:0">${cnt} 班｜${d.length?`跟現在差 ${d.length} 處`:"跟現在一樣"}</div></div>
+      <div class="acts"><button class="btn" data-vview="${i}">${verOpen===i?"收起":"看差異"}</button>${d.length?`<button class="btn ${verArm===i?"no":""}" data-vrestore="${i}" ${busyAdmin?"disabled":""}>${verArm===i?"確定還原？再按一次":"還原這版"}</button>`:""}</div></div>`;
+    if(verOpen===i)h+=d.length?`<div class="verdiff">${d.map(x=>`<div>${fmtMd(x.md)}（${WD[DAY_BY_MD[x.md].w]}） <b>${esc(x.n)}</b>：這版 <span class="tm">${x.from}</span> → 現在 <span class="tm">${x.to}</span></div>`).join("")}</div>`:`<div class="verdiff">跟現在的班表完全一樣。</div>`;
+  });
+  return h+`</div>`;
 }
 let restoreArm=false;
 async function restoreBackup(){
@@ -771,7 +812,7 @@ function adminExtras(){
     h+=`<div class="pinrow"><span><b>${esc(p.n)}</b><span class="role">${p.r}</span></span><span class="pinval">${cur?esc(cur):"未設定"}</span>
       <input id="pin-${p.i}" class="reply" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="改成（4 個字）">
       <button class="btn" data-setpin="${p.i}" ${busyAdmin?"disabled":""}>設定</button></div>`;}
-  h+=`</div><h2>資料備份</h2><div class="card"><p class="note" style="margin:0">每支手機打開班表時，都會自動留一份加密的正常資料。如果班表被弄壞，可以還原成這支手機最後一次看到的版本（之後的變更會不見）。</p>
+  h+=`</div>`+versionsHtml()+`<h2>資料備份</h2><div class="card"><p class="note" style="margin:0">每支手機打開班表時，都會自動留一份加密的正常資料。如果班表被弄壞，可以還原成這支手機最後一次看到的版本（之後的變更會不見）。</p>
     <div class="acts"><button class="btn ${restoreArm?"no":""}" data-restore="1" ${busyAdmin?"disabled":""}>${restoreArm?"確定還原？再按一次":"還原備份"}</button></div></div>`;
   return h;
 }
@@ -784,6 +825,9 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   else if(t.dataset.relogin){loginState=null;render();}
   else if(t.dataset.setpin){const pi=+t.dataset.setpin;setPin(pi,($("pin-"+pi)||{}).value||"");}
   else if(t.dataset.restore)restoreBackup();
+  else if(t.dataset.vsave)saveVersion();
+  else if(t.dataset.vview){const i=+t.dataset.vview;verOpen=verOpen===i?null:i;render();}
+  else if(t.dataset.vrestore)restoreVersion(+t.dataset.vrestore);
   else if(t.dataset.setup)setupStore();
 });
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="pin")doLogin();});
