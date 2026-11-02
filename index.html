@@ -645,7 +645,7 @@ async function unwrapKey(pin,w){if(!w)return null;try{return await aesDec(await 
 async function importDK(raw){return crypto.subtle.importKey("raw",raw,"AES-GCM",false,["encrypt","decrypt"]);}
 
 /* ---------- 資料存放（加密後放在網路存放處） ---------- */
-const BLOB="__BLOB__",API="https://jsonblob.com/api/jsonBlob/"+BLOB;
+const BLOB="cb8d4a38b861",API="https://json.extendsclass.com/bin/"+BLOB;
 let DK=null,DKraw=null,PINSET={},lastLoad=0,loginState=null; // loginState: {matches:[pi], pin}
 function applyPayload(p){PEOPLE=(p.people||[]).map(([n,r,up,from],i)=>({n,r,up,i,from}));ASSIGN=p.assign||{};REQ=p.req||{};PINSET=p.pinSet||{};
   loaded.a=loaded.r=true;lastLoad=Date.now();render();}
@@ -771,7 +771,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="pin")
   const pin=BLOB.startsWith("__")?null:lsGet("pin");
   if(pin){const err=await login(pin);if(err){lsSet("pin","");render();}}
   else render();
-  setInterval(()=>{const ae=document.activeElement;if(!DK||document.hidden||sending||busyAdmin||(ae&&/TEXTAREA|INPUT|SELECT/.test(ae.tagName)))return;pull().catch(()=>{});},20000);
+  setInterval(()=>{const ae=document.activeElement;if(!DK||document.hidden||sending||busyAdmin||(ae&&/TEXTAREA|INPUT|SELECT/.test(ae.tagName)))return;pull().catch(()=>{});},60000);
   document.addEventListener("visibilitychange",()=>{if(DK&&!document.hidden&&Date.now()-lastLoad>5000)pull().catch(()=>{});});
 })();
 </script>
