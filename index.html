@@ -651,13 +651,14 @@ function applyPayload(p){PEOPLE=(p.people||[]).map(([n,r,up,from],i)=>({n,r,up,i
   loaded.a=loaded.r=true;lastLoad=Date.now();render();}
 async function getJson(){const r=await fetch(API,{cache:"no-store",headers:{Accept:"application/json"}});if(!r.ok)throw{code:"連線 "+r.status};return r.json();}
 async function decPayload(j){if(!j||!j.data)throw{code:"資料不見了"};try{return JSON.parse(td.decode(await aesDec(DK,j.data)));}catch(e){throw{code:"資料打不開"};}}
-async function pull(){if(!DK)return;try{applyPayload(await decPayload(await getJson()));storeErr=null;}catch(e){storeErr=e&&e.code||"錯誤";render();throw e;}}
+function keepGood(j){try{localStorage.setItem("lastgood",JSON.stringify(j));}catch(e){}}
+async function pull(){if(!DK)return;try{const j=await getJson();applyPayload(await decPayload(j));keepGood(j);storeErr=null;}catch(e){storeErr=e&&e.code||"錯誤";render();throw e;}}
 let storeErr=null,storeBroken=false,q=Promise.resolve();
 function mutate(fn){ // 讀最新 → 解密 → 改 → 加密 → 寫回（一次一個）
   const p=q.then(async()=>{const j=await getJson();const pl=await decPayload(j);await fn(pl,j);
     j.data=await aesEnc(DK,te.encode(JSON.stringify(pl)));j.at=Date.now();
     const w=await fetch(API,{method:"PUT",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(j)});
-    if(!w.ok)throw{code:"連線 "+w.status};applyPayload(pl);});
+    if(!w.ok)throw{code:"連線 "+w.status};keepGood(j);applyPayload(pl);});
   q=p.catch(()=>{});return p;}
 const db={doc:path=>{const [c,id]=path.split("/");return{
   set:d=>mutate(p=>{(p[c]=p[c]||{})[id]=d;}),
@@ -668,16 +669,16 @@ const db={doc:path=>{const [c,id]=path.split("/");return{
 async function login(pin){
   pin=String(pin||"").trim();if(!/^\d{4}$/.test(pin))return "請輸入 4 位數密碼";
   let j;try{j=await getJson();}catch(e){return "連不上班表資料，請檢查網路";}
-  if(!j||!j.wraps||!j.data||!j.wraps.admin){storeBroken=true;return "班表資料被破壞了，請按下方「還原到最近備份」";}
+  if(!j||!j.wraps||!j.data||!j.wraps.admin){storeBroken=true;return "班表資料被破壞了，請按下方「還原備份」";}
   storeBroken=false;
   const ws=j.wraps;
   const a=await unwrapKey(pin,ws.admin);
-  if(a){DKraw=a;DK=await importDK(a);isOwner=true;me=null;lsSet("pin",pin);lsSet("who","");afterLogin();applyPayload(await decPayload(j));return "";}
+  if(a){keepGood(j);DKraw=a;DK=await importDK(a);isOwner=true;me=null;lsSet("pin",pin);lsSet("who","");afterLogin();applyPayload(await decPayload(j));return "";}
   const keys=Object.keys(ws).filter(k=>/^p\d+$/.test(k));
   const res=await Promise.all(keys.map(k=>unwrapKey(pin,ws[k])));
   const matches=keys.filter((k,i)=>res[i]).map(k=>+k.slice(1));
   if(!matches.length)return "密碼不對";
-  DKraw=res.find(Boolean);DK=await importDK(DKraw);isOwner=false;
+  keepGood(j);DKraw=res.find(Boolean);DK=await importDK(DKraw);isOwner=false;
   const pl=await decPayload(j);
   const saved=+lsGet("who");
   if(matches.length===1||matches.includes(saved)){me=matches.length===1?matches[0]:saved;lsSet("pin",pin);lsSet("who",String(me));afterLogin();applyPayload(pl);return "";}
@@ -690,9 +691,24 @@ function afterLogin(){
   setTabs("all");
 }
 function logout(){lsSet("pin","");lsSet("who","");location.reload();}
+async function setupStore(){
+  const b=document.querySelector("[data-setup]");if(b){b.disabled=true;b.textContent="建立中…";}
+  try{const seed=await (await fetch("seed.enc.json",{cache:"no-store"})).text();
+    const r=await fetch("https://jsonblob.com/api/jsonBlob",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:seed});
+    if(!r.ok)throw{code:"連線 "+r.status};
+    const loc=r.headers.get("Location")||r.headers.get("location")||"";const id=(loc.split("/").pop())||r.headers.get("X-jsonblob")||r.headers.get("x-jsonblob-id")||"";
+    setupId=id||"(讀不到編號)";render();}
+  catch(e){toast("建立失敗："+(e&&e.code||e&&e.message||"錯誤"),"err");}
+}
+let setupId=null;
 function renderLogin(){
   $("meter").hidden=true;$("tabs").hidden=true;$("whoRow").hidden=true;
   let h=flashHtml();
+  if(BLOB.startsWith("__")){
+    h+=`<div class="card" style="margin-top:16px"><h3>第一次使用：建立班表存放處</h3>
+      ${setupId?`<p style="margin:0">建好了，存放處編號：</p><div class="tm" style="font-size:16px;word-break:break-all;user-select:all">${esc(setupId)}</div><p class="note" style="margin:0">把這串編號傳給 Claude，接上之後所有人就能用了。</p>`
+      :`<p class="note" style="margin:0">只需要做一次。按下去會把加密後的班表放到存放處。</p><div class="acts"><button class="btn pri" data-setup="1" style="flex:1;padding:12px">建立班表存放處</button></div>`}</div>`;
+    $("main").innerHTML=h;return;}
   if(loginState){
     h+=`<div class="card" style="margin-top:16px"><h3>你是誰？</h3><p class="note" style="margin:0">這組密碼還是預設值，好幾個人共用。點你的名字進去，之後請主管幫你改成自己的密碼。</p>
       <div class="dchips" style="flex-wrap:wrap">${loginState.matches.map(pi=>{const p=loginState.pl.people[pi];return `<button class="dchip pchip" data-who="${pi}"><span>${esc(p[0])}</span><small>${p[1]}</small></button>`;}).join("")}</div>
@@ -701,7 +717,7 @@ function renderLogin(){
     h+=`<div class="card" style="margin-top:16px"><h3>輸入密碼</h3><p class="note" style="margin:0">員工輸入自己的密碼；主管輸入管理密碼。這支手機會記住，下次不用再輸入。</p>
       <input id="pin" class="reply" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="4 位數密碼" style="font-size:22px;letter-spacing:.4em;text-align:center">
       <div class="acts"><button class="btn pri" data-login="1" style="flex:1;padding:12px">進入</button></div></div>`;
-    if(storeBroken)h+=`<div class="banner warn">班表資料被破壞了。可以還原到最近一次的每日備份（之後的變更會不見）。<div class="acts" style="margin-top:8px"><button class="btn ${restoreArm?"no":""}" data-restore="1">${restoreArm?"確定還原？再按一次":"還原到最近備份"}</button></div></div>`;
+    if(storeBroken)h+=`<div class="banner warn">班表資料被破壞了。可以還原成這支手機最後一次看到的正常版本（之後的變更會不見）。<div class="acts" style="margin-top:8px"><button class="btn ${restoreArm?"no":""}" data-restore="1">${restoreArm?"確定還原？再按一次":"還原備份"}</button></div></div>`;
   }
   $("main").innerHTML=h;
 }
@@ -720,10 +736,11 @@ let restoreArm=false;
 async function restoreBackup(){
   if(!restoreArm){restoreArm=true;render();return;}
   restoreArm=false;busyAdmin=true;toast("還原中…","busy");
-  try{const r=await fetch("backup/latest.json",{cache:"no-store"});if(!r.ok)throw{code:"找不到備份"};const b=await r.json();
+  try{let b=null;try{b=JSON.parse(lsGet("lastgood")||"null");}catch(e){}
+    if(!b||!b.data||!b.wraps){const r=await fetch("backup/latest.json",{cache:"no-store"});if(!r.ok)throw{code:"找不到備份"};b=await r.json();}
     if(!b.data||!b.wraps)throw{code:"備份格式不對"};
     const w=await fetch(API,{method:"PUT",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(b)});
-    if(!w.ok)throw{code:"連線 "+w.status};busyAdmin=false;storeBroken=false;if(DK)await pull();toast(DK?"已還原到最近一次備份":"已還原，請重新輸入密碼");}
+    if(!w.ok)throw{code:"連線 "+w.status};busyAdmin=false;storeBroken=false;if(DK)await pull();toast(DK?"已還原":"已還原，請重新輸入密碼");}
   catch(e){busyAdmin=false;toast("還原失敗："+(e&&e.code||"錯誤"),"err");}
 }
 function adminExtras(){
@@ -733,8 +750,8 @@ function adminExtras(){
     h+=`<div class="pinrow"><span><b>${esc(p.n)}</b><span class="role">${p.r}</span></span><span class="chip ${set?"ok":"wait"}">${set?"已設定":"預設 0000"}</span>
       <input id="pin-${p.i}" class="reply" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="新密碼">
       <button class="btn" data-setpin="${p.i}" ${busyAdmin?"disabled":""}>設定</button></div>`;}
-  h+=`</div><h2>資料備份</h2><div class="card"><p class="note" style="margin:0">每天自動備份一次。如果班表資料被弄壞，可以還原到最近一次的備份（之後的變更會不見）。</p>
-    <div class="acts"><button class="btn ${restoreArm?"no":""}" data-restore="1" ${busyAdmin?"disabled":""}>${restoreArm?"確定還原？再按一次":"還原到最近備份"}</button></div></div>`;
+  h+=`</div><h2>資料備份</h2><div class="card"><p class="note" style="margin:0">每支手機打開班表時，都會自動留一份加密的正常資料。如果班表被弄壞，可以還原成這支手機最後一次看到的版本（之後的變更會不見）。</p>
+    <div class="acts"><button class="btn ${restoreArm?"no":""}" data-restore="1" ${busyAdmin?"disabled":""}>${restoreArm?"確定還原？再按一次":"還原備份"}</button></div></div>`;
   return h;
 }
 
@@ -746,11 +763,12 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   else if(t.dataset.relogin){loginState=null;render();}
   else if(t.dataset.setpin){const pi=+t.dataset.setpin;setPin(pi,($("pin-"+pi)||{}).value||"");}
   else if(t.dataset.restore)restoreBackup();
+  else if(t.dataset.setup)setupStore();
 });
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="pin")doLogin();});
 
 (async()=>{
-  const pin=lsGet("pin");
+  const pin=BLOB.startsWith("__")?null:lsGet("pin");
   if(pin){const err=await login(pin);if(err){lsSet("pin","");render();}}
   else render();
   setInterval(()=>{const ae=document.activeElement;if(!DK||document.hidden||sending||busyAdmin||(ae&&/TEXTAREA|INPUT|SELECT/.test(ae.tagName)))return;pull().catch(()=>{});},20000);
