@@ -184,6 +184,7 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
 .pinrow{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
 .pinrow .role{color:var(--muted);font-size:12px;margin-left:4px}
 .pinrow input{min-width:0}
+.pinval{font-family:var(--f-mono);font-size:16px;font-weight:600;letter-spacing:.15em}
 @media (prefers-reduced-motion:no-preference){.shift{transition:background .15s}}
 </style>
 
@@ -667,22 +668,23 @@ const db={doc:path=>{const [c,id]=path.split("/");return{
 
 /* ---------- 登入（主管密碼／員工密碼） ---------- */
 async function login(pin){
-  pin=String(pin||"").trim();if(!/^\d{4}$/.test(pin))return "請輸入 4 位數密碼";
+  pin=String(pin||"").trim();if([...pin].length!==4)return "密碼是 4 個字";
   let j;try{j=await getJson();}catch(e){return "連不上班表資料，請檢查網路";}
   if(!j||!j.wraps||!j.data||!j.wraps.admin){storeBroken=true;return "班表資料被破壞了，請按下方「還原備份」";}
   storeBroken=false;
   const ws=j.wraps;
   const a=await unwrapKey(pin,ws.admin);
-  if(a){keepGood(j);DKraw=a;DK=await importDK(a);isOwner=true;me=null;lsSet("pin",pin);lsSet("who","");afterLogin();applyPayload(await decPayload(j));return "";}
+  if(a){keepGood(j);DKraw=a;DK=await importDK(a);isOwner=true;me=null;lsSet("pin",pin);lsSet("who","");
+    try{await loadAdminKey(pin,j);}catch(e){DK=null;DKraw=null;isOwner=false;return "管理資料讀取失敗："+(e&&e.code||e&&e.message||"錯誤");}
+    afterLogin();applyPayload(await decPayload(j));return "";}
   const keys=Object.keys(ws).filter(k=>/^p\d+$/.test(k));
   const res=await Promise.all(keys.map(k=>unwrapKey(pin,ws[k])));
   const matches=keys.filter((k,i)=>res[i]).map(k=>+k.slice(1));
   if(!matches.length)return "密碼不對";
+  if(matches.length!==1)return "這組密碼暫時不能用，請找主管拿你的新密碼";
   keepGood(j);DKraw=res.find(Boolean);DK=await importDK(DKraw);isOwner=false;
   const pl=await decPayload(j);
-  const saved=+lsGet("who");
-  if(matches.length===1||matches.includes(saved)){me=matches.length===1?matches[0]:saved;lsSet("pin",pin);lsSet("who",String(me));afterLogin();applyPayload(pl);return "";}
-  loginState={matches,pin,pl};render();return "";
+  me=matches[0];lsSet("pin",pin);lsSet("who",String(me));afterLogin();applyPayload(pl);return "";
 }
 function pickWho(pi){const s=loginState;if(!s||!s.matches.includes(pi))return;me=pi;lsSet("pin",s.pin);lsSet("who",String(pi));loginState=null;afterLogin();applyPayload(s.pl);}
 function afterLogin(){
@@ -714,8 +716,8 @@ function renderLogin(){
       <div class="dchips" style="flex-wrap:wrap">${loginState.matches.map(pi=>{const p=loginState.pl.people[pi];return `<button class="dchip pchip" data-who="${pi}"><span>${esc(p[0])}</span><small>${p[1]}</small></button>`;}).join("")}</div>
       <div class="acts"><button class="btn" data-relogin="1">← 重新輸入密碼</button></div></div>`;
   }else{
-    h+=`<div class="card" style="margin-top:16px"><h3>輸入密碼</h3><p class="note" style="margin:0">員工輸入自己的密碼；主管輸入管理密碼。這支手機會記住，下次不用再輸入。</p>
-      <input id="pin" class="reply" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="4 位數密碼" style="font-size:22px;letter-spacing:.4em;text-align:center">
+    h+=`<div class="card" style="margin-top:16px"><h3>輸入密碼</h3><p class="note" style="margin:0">輸入主管給你的 4 個字密碼。這支手機會記住，下次不用再輸入。</p>
+      <input id="pin" class="reply" type="password" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="4 個字的密碼" style="font-size:22px;letter-spacing:.4em;text-align:center">
       <div class="acts"><button class="btn pri" data-login="1" style="flex:1;padding:12px">進入</button></div></div>`;
     if(storeBroken)h+=`<div class="banner warn">班表資料被破壞了。可以還原成這支手機最後一次看到的正常版本（之後的變更會不見）。<div class="acts" style="margin-top:8px"><button class="btn ${restoreArm?"no":""}" data-restore="1">${restoreArm?"確定還原？再按一次":"還原備份"}</button></div></div>`;
   }
@@ -725,11 +727,30 @@ async function doLogin(){const el=$("pin");const v=el?el.value:"";const b=docume
   const err=await login(v);if(err){toast(err,"err");}}
 
 /* ---------- 主管：員工密碼、備份 ---------- */
+/* 員工密碼只有主管看得到：用主管密碼另外加密一份 */
+let AK=null,PINS={};
+function randPin(used){for(;;){const p=String(crypto.getRandomValues(new Uint32Array(1))[0]%10000).padStart(4,"0");if(!used.has(p))return p;}}
+async function loadAdminKey(adminPin,j){
+  if(!j.adm){ // 第一次：取消預設密碼，每人產生一組不重複的密碼
+    await mutate(async(pl,jj)=>{const s=b64(crypto.getRandomValues(new Uint8Array(16)));const ak=await kek(adminPin,s);
+      const people=(pl.people||[]),used=new Set([adminPin]),pins={};
+      for(const k of Object.keys(jj.wraps))if(/^p\d+$/.test(k))delete jj.wraps[k];
+      people.forEach(([n,r],i)=>{if(r==="主管")return;const p=randPin(used);used.add(p);pins["p"+i]=p;});
+      for(const [k,p] of Object.entries(pins))jj.wraps[k]=await wrapKey(p,DKraw);
+      jj.adm={s,...await aesEnc(ak,te.encode(JSON.stringify(pins)))};delete pl.pinSet;});
+    j=await getJson();
+  }
+  AK=await kek(adminPin,j.adm.s);PINS=JSON.parse(td.decode(await aesDec(AK,j.adm)));
+}
 async function setPin(pi,pin){
-  if(!/^\d{4}$/.test(pin)){toast("密碼要 4 位數字","err");return;}
+  pin=String(pin||"").trim();
+  if([...pin].length!==4){toast("密碼要剛好 4 個字","err");return;}
+  if(/\s/.test(pin)){toast("密碼不能有空白","err");return;}
+  if(Object.entries(PINS).some(([k,v])=>k!=="p"+pi&&v===pin)||pin===lsGet("pin")){toast("這組密碼已經有人用了，換一組","err");return;}
   busyAdmin=true;toast("設定中…","busy");
-  try{await mutate(async(pl,j)=>{j.wraps["p"+pi]=await wrapKey(pin,DKraw);(pl.pinSet=pl.pinSet||{})["p"+pi]=pin!=="0000";});
-    busyAdmin=false;toast(`${PEOPLE[pi].n} 的密碼已設定為 ${pin}`);}
+  try{await mutate(async(pl,j)=>{const cur=JSON.parse(td.decode(await aesDec(AK,j.adm)));cur["p"+pi]=pin;
+      j.wraps["p"+pi]=await wrapKey(pin,DKraw);j.adm={s:j.adm.s,...await aesEnc(AK,te.encode(JSON.stringify(cur)))};PINS=cur;});
+    busyAdmin=false;toast(`${PEOPLE[pi].n} 的密碼改成 ${pin}`);}
   catch(e){busyAdmin=false;toast("設定失敗："+(e&&e.code||"請再試一次"),"err");}
 }
 let restoreArm=false;
@@ -745,10 +766,10 @@ async function restoreBackup(){
 }
 function adminExtras(){
   const staff=PEOPLE.filter(p=>p.r!=="主管");
-  let h=`<h2>員工密碼</h2><div class="card"><p class="note" style="margin:0">預設都是 0000。幫每個人設一組自己的 4 位數密碼，再私下告訴他。</p>`;
-  for(const p of staff){const set=PINSET["p"+p.i];
-    h+=`<div class="pinrow"><span><b>${esc(p.n)}</b><span class="role">${p.r}</span></span><span class="chip ${set?"ok":"wait"}">${set?"已設定":"預設 0000"}</span>
-      <input id="pin-${p.i}" class="reply" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="新密碼">
+  let h=`<h2>員工密碼</h2><div class="card"><p class="note" style="margin:0">每人一組 4 個字的密碼，只有主管能看、能改，員工不能自己改。私下告訴本人就好。</p>`;
+  for(const p of staff){const cur=PINS["p"+p.i];
+    h+=`<div class="pinrow"><span><b>${esc(p.n)}</b><span class="role">${p.r}</span></span><span class="pinval">${cur?esc(cur):"未設定"}</span>
+      <input id="pin-${p.i}" class="reply" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="改成（4 個字）">
       <button class="btn" data-setpin="${p.i}" ${busyAdmin?"disabled":""}>設定</button></div>`;}
   h+=`</div><h2>資料備份</h2><div class="card"><p class="note" style="margin:0">每支手機打開班表時，都會自動留一份加密的正常資料。如果班表被弄壞，可以還原成這支手機最後一次看到的版本（之後的變更會不見）。</p>
     <div class="acts"><button class="btn ${restoreArm?"no":""}" data-restore="1" ${busyAdmin?"disabled":""}>${restoreArm?"確定還原？再按一次":"還原備份"}</button></div></div>`;
