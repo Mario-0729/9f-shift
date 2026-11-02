@@ -1,0 +1,24 @@
+name: daily-backup
+on:
+  schedule:
+    - cron: "7 20 * * *"   # 每天台北時間 04:07
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Save encrypted copy of the store
+        run: |
+          set -e
+          id=$(grep -o 'BLOB="[^"]*"' index.html | cut -d'"' -f2)
+          if [ "$id" = "__BLOB__" ] || [ -z "$id" ]; then echo "store not initialised"; exit 0; fi
+          curl -sSf "https://jsonblob.com/api/jsonBlob/$id" -o /tmp/store.json
+          python3 -c "import json;j=json.load(open('/tmp/store.json'));assert j.get('wraps',{}).get('admin') and j.get('data'),'store looks broken, keeping old backup'"
+          cp /tmp/store.json backup/latest.json
+          git config user.name "shift-bot"
+          git config user.email "shift-bot@users.noreply.github.com"
+          git add backup/latest.json
+          git diff --cached --quiet || (git commit -m "Daily backup $(date -u +%F)" && git push)
