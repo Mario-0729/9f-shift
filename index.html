@@ -358,7 +358,7 @@ function tlPanel(md,byDay,opt={}){
   h+=`<div class="lab"><b>${op.train?"訓練":"營業"}</b><span class="tm">${op.t}</span></div>${track(`<span class="bar biz" style="left:${pct(op.o[0])};width:${wid(op.o[0],op.o[1])}"></span>${op.train?"":`<span class="bar prep" style="left:${pct(op.o[0]-0.5)};width:${wid(op.o[0]-0.5,op.o[0])}"></span>`}`)}`;
   for(const role of ["主管","正職","兼職"]){
     const rows=list.filter(a=>a.r===role);const liveR=rows.filter(a=>a.chg!=="del");
-    const offs=PEOPLE.filter(p=>p.r===role&&!liveR.some(a=>a.pi===p.i)&&!(p.from&&sel<p.from));
+    const offs=PEOPLE.filter(p=>!p.gone&&p.r===role&&!liveR.some(a=>a.pi===p.i)&&!(p.from&&sel<p.from));
     h+=`<div class="grp"><b>${role}</b> ${liveR.length} 人${offs.length?`<span class="offl">休：${offs.map(p=>esc(p.n)).join("、")}</span>`:""}</div>`;
     if(!rows.length&&role!=="兼職")h+=`<div class="lab"></div>${track("")}`;
     for(const a of rows){
@@ -520,7 +520,7 @@ function dayIssues(md,list){ // 營業時段沒有正職、尖峰正職不多於
   }
   const rng=ts=>{const out=[];let st=null,pv=null;for(const t of ts){if(st===null){st=t;}else if(t!==pv+0.5){out.push([st,pv+0.5]);st=t;}pv=t;}if(st!==null)out.push([st,pv+0.5]);
     return out.map(([a,b])=>`${hl(a)}:${a%1?"30":"00"}-${hl(b)}:${b%1?"30":"00"}`).join("、");};
-  const res=[];if(gap.length)res.push(`沒有主管或正職在班：${rng(gap)}`);if(pk.length)res.push(`尖峰正職沒有多於兼職：${rng(pk)}`);
+  const res=[];if(gap.length)res.push(`沒有主管或正職在班：${rng(gap)}`);
   return res;
 }
 function personCal(pi,items){
@@ -547,7 +547,7 @@ async function renderAdmin(){
   $("meter").hidden=true;$("stChip").innerHTML="";
   const main=$("main");
   if(!isOwner){main.innerHTML=`<div class="empty">只有主管可以看這頁。</div>`;return;}
-  const staff=PEOPLE.filter(p=>p.r!=="主管");
+  const staff=PEOPLE.filter(p=>p.r!=="主管"&&!p.gone);
   const cnt={none:0,confirmed:0,pending:0,approved:0,rejected:0};
   staff.forEach(p=>{const r=REQ["p"+p.i];cnt[r?r.status:"none"]++;});
   const items=pendingItems();
@@ -576,7 +576,7 @@ async function renderAdmin(){
     const others=items.filter(x=>x.md===rday&&x.pi!==rper);
     h+=`<div class="dayrev"><h3 style="font-size:15px">${fmtMd(rday)}（週${WD[DAY_BY_MD[rday].w]}）<span class="chip ${live.length<before.length?"no":live.length>before.length?"pick":"ok"}">上班 ${before.length} → ${live.length} 人</span></h3>`;
     h+=iss.length?`<div class="banner warn" style="margin:0"><b>核准後：</b><br>${iss.map(esc).join("<br>")}${issB.length?`<br><span class="note">（調整前就有：${issB.map(esc).join("；")}）</span>`:""}</div>`
-      :`<div class="flash ok">核准後：每個營業時段都有主管或正職，尖峰正職多於兼職。</div>`;
+      :`<div class="flash ok">核准後：每個營業時段都有主管或正職。</div>`;
     for(const x of its){
       h+=`<div class="ritem"><div class="rinfo"><span class="chip ${x.type==="no"?"no":"pick"}">${x.type==="no"?"不能":"補選"}</span> <span class="tm">${x.t}</span> ${x.kk}班${x.type==="pk"?` <span class="chip">${x.open?"補缺人":"加派"}</span>`:""}</div>
         </div>`;
@@ -653,7 +653,7 @@ async function importDK(raw){return crypto.subtle.importKey("raw",raw,"AES-GCM",
 /* ---------- 資料存放（加密後放在網路存放處） ---------- */
 const BLOB="cb8d4a38b861",API="https://json.extendsclass.com/bin/"+BLOB;
 let DK=null,DKraw=null,PINSET={},lastLoad=0,loginState=null; // loginState: {matches:[pi], pin}
-function applyPayload(p){VERS=p.versions||[];PEOPLE=(p.people||[]).map(([n,r,up,from],i)=>({n,r,up,i,from}));ASSIGN=p.assign||{};REQ=p.req||{};PINSET=p.pinSet||{};
+function applyPayload(p){VERS=p.versions||[];PEOPLE=(p.people||[]).map(([n,r,up,from,gone],i)=>({n,r,up,i,from,gone:!!gone}));ASSIGN=p.assign||{};REQ=p.req||{};PINSET=p.pinSet||{};
   loaded.a=loaded.r=true;lastLoad=Date.now();render();}
 async function getJson(){const r=await fetch(API,{cache:"no-store",headers:{Accept:"application/json"}});if(!r.ok)throw{code:"連線 "+r.status};return r.json();}
 async function decPayload(j){if(!j||!j.data)throw{code:"資料不見了"};try{return JSON.parse(td.decode(await aesDec(DK,j.data)));}catch(e){throw{code:"資料打不開"};}}
@@ -806,7 +806,7 @@ async function restoreBackup(){
   catch(e){busyAdmin=false;toast("還原失敗："+(e&&e.code||"錯誤"),"err");}
 }
 function adminExtras(){
-  const staff=PEOPLE.filter(p=>p.r!=="主管");
+  const staff=PEOPLE.filter(p=>p.r!=="主管"&&!p.gone);
   let h=`<h2>員工密碼</h2><div class="card"><p class="note" style="margin:0">每人一組 4 個字的密碼，只有主管能看、能改，員工不能自己改。私下告訴本人就好。</p>`;
   for(const p of staff){const cur=PINS["p"+p.i];
     h+=`<div class="pinrow"><span><b>${esc(p.n)}</b><span class="role">${p.r}</span></span><span class="pinval">${cur?esc(cur):"未設定"}</span>
