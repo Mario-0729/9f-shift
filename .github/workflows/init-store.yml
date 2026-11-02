@@ -11,8 +11,11 @@ jobs:
         run: |
           set -e
           if ! grep -q '__BLOB__' index.html; then echo "already initialised"; exit 0; fi
-          loc=$(curl -sS -D - -o /dev/null -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' --data @seed.enc.json https://jsonblob.com/api/jsonBlob | tr -d '\r' | awk 'tolower($1)=="location:"{print $2}')
+          curl -sS -L -D /tmp/h -o /tmp/b -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' --data @seed.enc.json https://jsonblob.com/api/jsonBlob || true
+          echo "--- headers"; cat /tmp/h; echo "--- body"; head -c 300 /tmp/b; echo
+          loc=$(tr -d '\r' < /tmp/h | awk 'tolower($1)=="location:"{print $2}' | tail -1)
           id=${loc##*/}
+          [ -z "$id" ] && id=$(tr -d '\r' < /tmp/h | awk 'tolower($1)=="x-jsonblob-id:"{print $2}' | tail -1)
           echo "blob id: $id"
           test -n "$id"
           curl -sSf "https://jsonblob.com/api/jsonBlob/$id" -o /dev/null
