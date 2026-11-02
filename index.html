@@ -761,11 +761,11 @@ async function setPin(pi,pin){
 /* ---------- 班表版本（主管用，依日期時間保存） ---------- */
 const VMAX=30;
 const TIMES=[...new Set(CFG.types.flatMap(t=>t.shifts.map(x=>x[1])))];
-function encAssign(assign){return Object.values(assign).map(a=>`${a.md-1100}.${a.pi}.${TIMES.indexOf(a.t)}`).join(";");}
+function encAssign(assign){return Object.values(assign).map(a=>{const i=TIMES.indexOf(a.t);return `${a.md-1100}.${a.pi}.${i>=0?i:"~"+a.t}`;}).join(";");}
 function decAssign(str){const o={};if(!str)return o;
-  for(const part of str.split(";")){const [d,pi,ti]=part.split(".").map(Number);const md=1100+d,t=TIMES[ti],P=PEOPLE[pi];if(!P||!t||!DAY_BY_MD[md])continue;
+  for(const part of str.split(";")){const [ds,ps,ts]=part.split(".");const d=+ds,pi=+ps;const md=1100+d,t=ts&&ts[0]==="~"?ts.slice(1):TIMES[+ts],P=PEOPLE[pi];if(!P||!t||!DAY_BY_MD[md])continue;
     const [a,b]=t.split("-").map(x=>{const [h,m]=x.split(":").map(Number);return h+m/60;});const s0=a,e0=b<=a?b+24:b;
-    const tpl=CFG.types[DAY_BY_MD[md].type].shifts.find(x=>x[1]===t);const k=tpl?tpl[2]:(s0<12?"早":s0<16?"中":"晚");
+    const tpl=CFG.types[DAY_BY_MD[md].type].shifts.find(x=>x[1]===t);const k=tpl?tpl[2]:(s0<=12?"早":s0<16?"中":"晚");
     o[`${md}-${pi}`]={md,pi,n:P.n,r:P.r,t,k,s:s0,e:e0};}
   return o;}
 function pushVersion(pl,note){const v=(pl.versions=pl.versions||[]);v.unshift({at:Date.now(),note,a:encAssign(pl.assign||{})});if(v.length>VMAX)v.length=VMAX;}
