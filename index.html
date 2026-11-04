@@ -491,7 +491,7 @@ async function submit(){
   try{await Promise.race([db.doc("req/p"+me).set(data),timeout]);sending=false;dirty=false;
     toast(changes?"已送出 ✓ 等主管核准。可以按「回總班表」離開。":"已確認 ✓ 謝謝！可以按「回總班表」離開。","ok");}
   catch(err){sending=false;const code=err&&err.code;
-    toast(code==="timeout"?"送不出去：伺服器沒有回應，請檢查網路後再按一次。":`送不出去（${code||"未知錯誤"}），請再按一次。`,"err");}
+    toast(err&&err.msg?err.msg:code==="timeout"?"送不出去：伺服器沒有回應，請檢查網路後再按一次。":`送不出去（${code||"未知錯誤"}），請再按一次。`,"err");}
 }
 
 /* ---------- 管理檢視：逐日審核 ---------- */
@@ -627,7 +627,7 @@ async function decide(ids,ok){
     }
     if(ok&&items.length>fail.length){const who=[...new Set(items.map(x=>x.n))].join("、");try{await mutate(pl=>pushVersion(pl,`核准 ${who}`));}catch(e){}}
     busyAdmin=false;toast(fail.length?`部分沒處理：${fail.join("；")}`:ok?`已核准 ${items.length} 項`:`已退回 ${items.length} 項`,fail.length?"err":"ok");
-  }catch(e){busyAdmin=false;toast("處理失敗："+(e&&e.code||"請再試一次"),"err");}
+  }catch(e){busyAdmin=false;toast(e&&e.msg||("處理失敗："+(e&&e.code||"請再試一次")),"err");}
 }
 
 /* ---------- 共用 ---------- */
@@ -636,6 +636,7 @@ function render0(){
   if(!DK||loginState){renderLogin();return;}
   if(storeErr){$("main").innerHTML=`<div class="banner warn">班表資料讀不到（${esc(storeErr)}）。${isOwner?"可以在下面還原到最近一次備份。":"請通知主管處理。"}</div>${isOwner?adminExtras():""}`;return;}
   if(!loaded.a||!loaded.r)return;
+  { const rb=document.getElementById("robanner"); if(readOnly&&!rb){const d=document.createElement("div");d.id="robanner";d.className="banner warn";d.style.margin="10px 0 0";d.textContent="班表伺服器暫時連不上，現在顯示的是備份，只能看、不能送出或核准。";document.querySelector("header.top .in").appendChild(d);} else if(!readOnly&&rb) rb.remove(); }
   $("whoRow").hidden=false;$("whoName").textContent=isOwner?"主管（管理者）":isViewer?"其他主管（只能看）":(PEOPLE[me]?`${PEOPLE[me].n}（${PEOPLE[me].r}）`:"");
   if(!Object.keys(ASSIGN).length&&view!=="admin"){$("main").innerHTML=`<div class="empty">班表還沒放上來，請稍後再開。</div>`;return;}
   $("whoRow").hidden=view==="admin";
@@ -660,13 +661,18 @@ const BLOB="cb8d4a38b861",API="https://json.extendsclass.com/bin/"+BLOB;
 let DK=null,DKraw=null,PINSET={},lastLoad=0,loginState=null; // loginState: {matches:[pi], pin}
 function applyPayload(p){VERS=p.versions||[];PEOPLE=(p.people||[]).map(([n,r,up,from,gone],i)=>({n,r,up,i,from,gone:!!gone}));ASSIGN=p.assign||{};REQ=p.req||{};PINSET=p.pinSet||{};
   loaded.a=loaded.r=true;lastLoad=Date.now();render();}
-async function getJson(){const r=await fetch(API,{cache:"no-store",headers:{Accept:"application/json"}});if(r.status===429)throw{code:"busy",msg:"班表伺服器這個月的連線次數用完了，請通知主管"};if(!r.ok)throw{code:"連線 "+r.status};return r.json();}
+let readOnly=false;
+async function getJson(){let r=null;try{r=await fetch(API,{cache:"no-store",headers:{Accept:"application/json"}});}catch(e){}
+  if(r&&r.ok){readOnly=false;return r.json();}
+  // 存放處連不上（例如本月連線次數用完）：改讀網站上的備份，只能看不能改
+  const b=await fetch("backup/latest.json?t="+Date.now(),{cache:"no-store"});if(!b.ok)throw{code:"連線 "+(r?r.status:"失敗"),msg:"連不上班表資料，請稍後再試"};
+  readOnly=true;return b.json();}
 async function decPayload(j){if(!j||!j.data)throw{code:"資料不見了"};try{return JSON.parse(td.decode(await aesDec(DK,j.data)));}catch(e){throw{code:"資料打不開"};}}
 function keepGood(j){try{localStorage.setItem("lastgood",JSON.stringify(j));}catch(e){}}
 async function pull(){if(!DK)return;try{const j=await getJson();applyPayload(await decPayload(j));keepGood(j);storeErr=null;}catch(e){storeErr=e&&(e.msg||e.code)||"錯誤";render();throw e;}}
 let storeErr=null,storeBroken=false,q=Promise.resolve();
 function mutate(fn){ // 讀最新 → 解密 → 改 → 加密 → 寫回（一次一個）
-  const p=q.then(async()=>{const j=await getJson();const pl=await decPayload(j);await fn(pl,j);
+  const p=q.then(async()=>{const j=await getJson();if(readOnly)throw{code:"唯讀",msg:"班表暫時只能看、不能改，請稍後再試或通知主管"};const pl=await decPayload(j);await fn(pl,j);
     j.data=await aesEnc(DK,te.encode(JSON.stringify(pl)));j.at=Date.now();
     const w=await fetch(API,{method:"PUT",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(j)});
     if(!w.ok)throw{code:"連線 "+w.status};keepGood(j);applyPayload(pl);});
@@ -765,7 +771,7 @@ async function setPin(pi,pin){
   try{await mutate(async(pl,j)=>{const cur=JSON.parse(td.decode(await aesDec(AK,j.adm)));cur[key]=pin;
       j.wraps[key]=await wrapKey(pin,DKraw);j.adm={s:j.adm.s,...await aesEnc(AK,te.encode(JSON.stringify(cur)))};PINS=cur;});
     busyAdmin=false;toast(`${label} 的密碼改成 ${pin}`);}
-  catch(e){busyAdmin=false;toast("設定失敗："+(e&&e.code||"請再試一次"),"err");}
+  catch(e){busyAdmin=false;toast(e&&e.msg||("設定失敗："+(e&&e.code||"請再試一次")),"err");}
 }
 /* ---------- 班表版本（主管用，依日期時間保存） ---------- */
 const VMAX=30;
@@ -785,12 +791,12 @@ function verDiff(oldA,newA){ // 從 oldA 變成 newA 的差異
   return ch.sort((a,b)=>a.md-b.md||a.pi-b.pi);}
 async function saveVersion(){const note=(($("vnote")||{}).value||"").trim()||"手動存版";
   busyAdmin=true;toast("存版本中…","busy");
-  try{await mutate(pl=>{pushVersion(pl,note);});busyAdmin=false;toast("已存成新版本");}catch(e){busyAdmin=false;toast("存版本失敗："+(e&&e.code||"錯誤"),"err");}}
+  try{await mutate(pl=>{pushVersion(pl,note);});busyAdmin=false;toast("已存成新版本");}catch(e){busyAdmin=false;toast(e&&e.msg||("存版本失敗："+(e&&e.code||"錯誤")),"err");}}
 async function restoreVersion(i){
   if(verArm!==i){verArm=i;render();return;}
   verArm=null;const v=VERS[i];if(!v)return;busyAdmin=true;toast("還原中…","busy");
   verOpen=null;try{await mutate(pl=>{pushVersion(pl,"還原前自動保存");pl.assign=decAssign(v.a);pushVersion(pl,`還原到 ${fmtAt(v.at)} 的版本`);});busyAdmin=false;toast(`已還原到 ${fmtAt(v.at)} 的版本`);}
-  catch(e){busyAdmin=false;toast("還原失敗："+(e&&e.code||"錯誤"),"err");}}
+  catch(e){busyAdmin=false;toast(e&&e.msg||("還原失敗："+(e&&e.code||"錯誤")),"err");}}
 const fmtAt=t=>{const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
 function versionsHtml(){
   let h=`<h2>班表版本</h2><div class="card"><p class="note" style="margin:0">每次核准都會自動存一版，也可以自己存一版並寫上名稱。最多保留最近 ${VMAX} 版。還原時會先自動保存目前的班表，不怕還原錯。</p>
@@ -812,7 +818,7 @@ async function restoreBackup(){
     if(!b.data||!b.wraps)throw{code:"備份格式不對"};
     const w=await fetch(API,{method:"PUT",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(b)});
     if(!w.ok)throw{code:"連線 "+w.status};busyAdmin=false;storeBroken=false;if(DK)await pull();toast(DK?"已還原":"已還原，請重新輸入密碼");}
-  catch(e){busyAdmin=false;toast("還原失敗："+(e&&e.code||"錯誤"),"err");}
+  catch(e){busyAdmin=false;toast(e&&e.msg||("還原失敗："+(e&&e.code||"錯誤")),"err");}
 }
 function adminExtras(){
   const staff=PEOPLE.filter(p=>p.r!=="主管"&&!p.gone);
