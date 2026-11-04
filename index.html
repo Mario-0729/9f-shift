@@ -204,7 +204,8 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
   <div class="row" id="whoRow" hidden>
     <span style="font-size:13px;color:var(--muted)">我是</span><b id="whoName"></b>
     <span id="stChip"></span>
-    <button id="logout" class="back" style="padding:0;margin-left:auto;font-size:13px">登出</button>
+    <button id="reload" class="back" style="padding:0;margin-left:auto;font-size:13px">重新整理</button>
+    <button id="logout" class="back" style="padding:0;font-size:13px">登出</button>
   </div>
   <div class="meter" id="meter" hidden></div>
 </div></header>
@@ -659,10 +660,10 @@ const BLOB="cb8d4a38b861",API="https://json.extendsclass.com/bin/"+BLOB;
 let DK=null,DKraw=null,PINSET={},lastLoad=0,loginState=null; // loginState: {matches:[pi], pin}
 function applyPayload(p){VERS=p.versions||[];PEOPLE=(p.people||[]).map(([n,r,up,from,gone],i)=>({n,r,up,i,from,gone:!!gone}));ASSIGN=p.assign||{};REQ=p.req||{};PINSET=p.pinSet||{};
   loaded.a=loaded.r=true;lastLoad=Date.now();render();}
-async function getJson(){const r=await fetch(API,{cache:"no-store",headers:{Accept:"application/json"}});if(!r.ok)throw{code:"連線 "+r.status};return r.json();}
+async function getJson(){const r=await fetch(API,{cache:"no-store",headers:{Accept:"application/json"}});if(r.status===429)throw{code:"busy",msg:"班表伺服器這個月的連線次數用完了，請通知主管"};if(!r.ok)throw{code:"連線 "+r.status};return r.json();}
 async function decPayload(j){if(!j||!j.data)throw{code:"資料不見了"};try{return JSON.parse(td.decode(await aesDec(DK,j.data)));}catch(e){throw{code:"資料打不開"};}}
 function keepGood(j){try{localStorage.setItem("lastgood",JSON.stringify(j));}catch(e){}}
-async function pull(){if(!DK)return;try{const j=await getJson();applyPayload(await decPayload(j));keepGood(j);storeErr=null;}catch(e){storeErr=e&&e.code||"錯誤";render();throw e;}}
+async function pull(){if(!DK)return;try{const j=await getJson();applyPayload(await decPayload(j));keepGood(j);storeErr=null;}catch(e){storeErr=e&&(e.msg||e.code)||"錯誤";render();throw e;}}
 let storeErr=null,storeBroken=false,q=Promise.resolve();
 function mutate(fn){ // 讀最新 → 解密 → 改 → 加密 → 寫回（一次一個）
   const p=q.then(async()=>{const j=await getJson();const pl=await decPayload(j);await fn(pl,j);
@@ -678,7 +679,7 @@ const db={doc:path=>{const [c,id]=path.split("/");return{
 /* ---------- 登入（主管密碼／員工密碼） ---------- */
 async function login(pin){
   pin=String(pin||"").trim();if([...pin].length!==4)return "密碼是 4 個字";
-  let j;try{j=await getJson();}catch(e){return "連不上班表資料，請檢查網路";}
+  let j;try{j=await getJson();}catch(e){return e&&e.msg||"連不上班表資料，請檢查網路";}
   if(!j||!j.wraps||!j.data||!j.wraps.admin){storeBroken=true;return "班表資料被破壞了，請按下方「還原備份」";}
   storeBroken=false;
   const ws=j.wraps;
@@ -830,6 +831,7 @@ function adminExtras(){
 
 $("tabAll").onclick=()=>setView("all");$("tabMe").onclick=()=>setView("me");$("tabAdmin").onclick=()=>setView("admin");
 $("logout").onclick=logout;
+$("reload").onclick=()=>{pull().then(()=>toast("已更新到最新班表")).catch(e=>toast(e&&e.msg||"更新失敗，請稍後再試","err"));};
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
   if(t.dataset.login)doLogin();
   else if(t.dataset.who)pickWho(+t.dataset.who);
@@ -847,8 +849,8 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="pin")
   const pin=BLOB.startsWith("__")?null:lsGet("pin");
   if(pin){const err=await login(pin);if(err){lsSet("pin","");render();}}
   else render();
-  setInterval(()=>{const ae=document.activeElement;if(!DK||document.hidden||sending||busyAdmin||(ae&&/TEXTAREA|INPUT|SELECT/.test(ae.tagName)))return;pull().catch(()=>{});},60000);
-  document.addEventListener("visibilitychange",()=>{if(DK&&!document.hidden&&Date.now()-lastLoad>5000)pull().catch(()=>{});});
+  // 存放處每月有連線次數上限：不自動輪詢，只在回到這頁且超過 10 分鐘時更新一次，或按「重新整理」
+  document.addEventListener("visibilitychange",()=>{if(DK&&!document.hidden&&Date.now()-lastLoad>600000)pull().catch(()=>{});});
 })();
 </script>
 
