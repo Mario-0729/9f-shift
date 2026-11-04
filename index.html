@@ -221,7 +221,7 @@ let PEOPLE=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmtMd=md=>`${Math.floor(md/100)}/${md%100}`;
-let isOwner=false;
+let isOwner=false,isViewer=false;
 let ASSIGN={},REQ={},loaded={a:false,r:false};
 let view="all",me=null;           // me = person index
 let draft={decline:new Set(),pick:new Map(),note:""}; // pick: key -> slot
@@ -546,6 +546,10 @@ function personCal(pi,items){
 async function renderAdmin(){
   $("meter").hidden=true;$("stChip").innerHTML="";
   const main=$("main");
+  if(isViewer){const staff=PEOPLE.filter(p=>p.r!=="主管"&&!p.gone);const items=pendingItems();
+    let v=`<p class="note">你是「只能看」的身分：可以看班表和大家的回覆狀態，不能改班、不能核准。</p><h2>全員狀態</h2><div class="ppl">`;
+    for(const p of staff){const n=officialOf(p.i).length;v+=`<div>${esc(p.n)}<span class="role">${p.r}</span></div><div class="num">${n}/${p.up}</div><div>${statusChip(p.i)}</div>`;}
+    v+=`</div><p class="note">待主管審核的變更：${items.length} 件。</p>`;main.innerHTML=v;return;}
   if(!isOwner){main.innerHTML=`<div class="empty">只有主管可以看這頁。</div>`;return;}
   const staff=PEOPLE.filter(p=>p.r!=="主管"&&!p.gone);
   const cnt={none:0,confirmed:0,pending:0,approved:0,rejected:0};
@@ -631,7 +635,7 @@ function render0(){
   if(!DK||loginState){renderLogin();return;}
   if(storeErr){$("main").innerHTML=`<div class="banner warn">班表資料讀不到（${esc(storeErr)}）。${isOwner?"可以在下面還原到最近一次備份。":"請通知主管處理。"}</div>${isOwner?adminExtras():""}`;return;}
   if(!loaded.a||!loaded.r)return;
-  $("whoRow").hidden=false;$("whoName").textContent=isOwner?"主管（管理者）":(PEOPLE[me]?`${PEOPLE[me].n}（${PEOPLE[me].r}）`:"");
+  $("whoRow").hidden=false;$("whoName").textContent=isOwner?"主管（管理者）":isViewer?"其他主管（只能看）":(PEOPLE[me]?`${PEOPLE[me].n}（${PEOPLE[me].r}）`:"");
   if(!Object.keys(ASSIGN).length&&view!=="admin"){$("main").innerHTML=`<div class="empty">班表還沒放上來，請稍後再開。</div>`;return;}
   $("whoRow").hidden=view==="admin";
   view==="admin"?renderAdmin():view==="me"?renderMe():renderAll();
@@ -682,6 +686,8 @@ async function login(pin){
   if(a){keepGood(j);DKraw=a;DK=await importDK(a);isOwner=true;me=null;lsSet("pin",pin);lsSet("who","");
     try{await loadAdminKey(pin,j);}catch(e){DK=null;DKraw=null;isOwner=false;return "管理資料讀取失敗："+(e&&e.code||e&&e.message||"錯誤");}
     afterLogin();applyPayload(await decPayload(j));return "";}
+  const vk=await unwrapKey(pin,ws.viewer);
+  if(vk){keepGood(j);DKraw=vk;DK=await importDK(vk);isOwner=false;isViewer=true;me=null;lsSet("pin",pin);lsSet("who","");afterLogin();applyPayload(await decPayload(j));return "";}
   const keys=Object.keys(ws).filter(k=>/^p\d+$/.test(k));
   const res=await Promise.all(keys.map(k=>unwrapKey(pin,ws[k])));
   const matches=keys.filter((k,i)=>res[i]).map(k=>+k.slice(1));
@@ -693,8 +699,9 @@ async function login(pin){
 }
 function pickWho(pi){const s=loginState;if(!s||!s.matches.includes(pi))return;me=pi;lsSet("pin",s.pin);lsSet("who",String(pi));loginState=null;afterLogin();applyPayload(s.pl);}
 function afterLogin(){
-  $("tabs").hidden=false;$("tabAdmin").hidden=!isOwner;$("tabMe").hidden=isOwner;
-  $("whoName").textContent=isOwner?"主管（管理者）":"";
+  $("tabs").hidden=false;$("tabAdmin").hidden=!(isOwner||isViewer);$("tabMe").hidden=isOwner||isViewer;
+  $("tabAdmin").textContent=isViewer?"全員狀態":"管理";
+  $("whoName").textContent=isOwner?"主管（管理者）":isViewer?"其他主管（只能看）":"";
   setTabs("all");
 }
 function logout(){lsSet("pin","");lsSet("who","");location.reload();}
@@ -748,14 +755,15 @@ async function loadAdminKey(adminPin,j){
   AK=await kek(adminPin,j.adm.s);PINS=JSON.parse(td.decode(await aesDec(AK,j.adm)));
 }
 async function setPin(pi,pin){
+  const key=/^\d+$/.test(String(pi))?"p"+pi:String(pi),label=key==="viewer"?"其他主管（只能看）":PEOPLE[pi].n;
   pin=String(pin||"").trim();
   if([...pin].length!==4){toast("密碼要剛好 4 個字","err");return;}
   if(/\s/.test(pin)){toast("密碼不能有空白","err");return;}
-  if(Object.entries(PINS).some(([k,v])=>k!=="p"+pi&&v===pin)||pin===lsGet("pin")){toast("這組密碼已經有人用了，換一組","err");return;}
+  if(Object.entries(PINS).some(([k,v])=>k!==key&&v===pin)||pin===lsGet("pin")){toast("這組密碼已經有人用了，換一組","err");return;}
   busyAdmin=true;toast("設定中…","busy");
-  try{await mutate(async(pl,j)=>{const cur=JSON.parse(td.decode(await aesDec(AK,j.adm)));cur["p"+pi]=pin;
-      j.wraps["p"+pi]=await wrapKey(pin,DKraw);j.adm={s:j.adm.s,...await aesEnc(AK,te.encode(JSON.stringify(cur)))};PINS=cur;});
-    busyAdmin=false;toast(`${PEOPLE[pi].n} 的密碼改成 ${pin}`);}
+  try{await mutate(async(pl,j)=>{const cur=JSON.parse(td.decode(await aesDec(AK,j.adm)));cur[key]=pin;
+      j.wraps[key]=await wrapKey(pin,DKraw);j.adm={s:j.adm.s,...await aesEnc(AK,te.encode(JSON.stringify(cur)))};PINS=cur;});
+    busyAdmin=false;toast(`${label} 的密碼改成 ${pin}`);}
   catch(e){busyAdmin=false;toast("設定失敗："+(e&&e.code||"請再試一次"),"err");}
 }
 /* ---------- 班表版本（主管用，依日期時間保存） ---------- */
@@ -807,11 +815,14 @@ async function restoreBackup(){
 }
 function adminExtras(){
   const staff=PEOPLE.filter(p=>p.r!=="主管"&&!p.gone);
-  let h=`<h2>員工密碼</h2><div class="card"><p class="note" style="margin:0">每人一組 4 個字的密碼，只有主管能看、能改，員工不能自己改。私下告訴本人就好。</p>`;
+  let h=`<h2>員工密碼</h2><div class="card"><p class="note" style="margin:0">每人一組 4 個字的密碼，只有主管能看、能改，員工不能自己改。私下告訴本人就好。「其他主管」那組可以看班表和全員狀態，但不能改。</p>`;
   for(const p of staff){const cur=PINS["p"+p.i];
     h+=`<div class="pinrow"><span><b>${esc(p.n)}</b><span class="role">${p.r}</span></span><span class="pinval">${cur?esc(cur):"未設定"}</span>
       <input id="pin-${p.i}" class="reply" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="改成（4 個字）">
       <button class="btn" data-setpin="${p.i}" ${busyAdmin?"disabled":""}>設定</button></div>`;}
+  h+=`<div class="pinrow"><span><b>其他主管</b><span class="role">只能看</span></span><span class="pinval">${PINS.viewer?esc(PINS.viewer):"未設定"}</span>
+      <input id="pin-viewer" class="reply" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="改成（4 個字）">
+      <button class="btn" data-setpin="viewer" ${busyAdmin?"disabled":""}>設定</button></div>`;
   h+=`</div>`+versionsHtml()+`<h2>資料備份</h2><div class="card"><p class="note" style="margin:0">每支手機打開班表時，都會自動留一份加密的正常資料。如果班表被弄壞，可以還原成這支手機最後一次看到的版本（之後的變更會不見）。</p>
     <div class="acts"><button class="btn ${restoreArm?"no":""}" data-restore="1" ${busyAdmin?"disabled":""}>${restoreArm?"確定還原？再按一次":"還原備份"}</button></div></div>`;
   return h;
@@ -823,7 +834,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.login)doLogin();
   else if(t.dataset.who)pickWho(+t.dataset.who);
   else if(t.dataset.relogin){loginState=null;render();}
-  else if(t.dataset.setpin){const pi=+t.dataset.setpin;setPin(pi,($("pin-"+pi)||{}).value||"");}
+  else if(t.dataset.setpin){const pi=t.dataset.setpin;setPin(pi,($("pin-"+pi)||{}).value||"");}
   else if(t.dataset.restore)restoreBackup();
   else if(t.dataset.vsave)saveVersion();
   else if(t.dataset.vview){const i=+t.dataset.vview;verOpen=verOpen===i?null:i;render();}
