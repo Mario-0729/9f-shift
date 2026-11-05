@@ -237,15 +237,15 @@ function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 /* ---------- 班表計算 ---------- */
 function officialOf(pi){return Object.entries(ASSIGN).filter(([,a])=>a.pi===pi).map(([id,a])=>({id,...a})).sort((x,y)=>x.md-y.md);}
 function choices(pi){ // 員工可選：自己職務在每一天範本裡的所有班別（標出哪些是空缺）
-  const P=PEOPLE[pi],role=P.r==="兼職"?"兼職":"正職";
+  const P=PEOPLE[pi],role=P.r==="兼職"?"兼職":"正職",roles=P.r==="主管"?["主管","正職"]:[role];
   const openSet=new Set(openSlots().filter(s=>s.r===role).map(s=>s.md+"|"+s.t));
   const out=[];
   for(const day of DAYS){
     if(P.from&&day.md<P.from)continue;
     const seen=new Set();
     for(const [r,t,k,s,e] of CFG.types[day.type].shifts){
-      if(r!==role||seen.has(t))continue;seen.add(t);
-      out.push({key:`${day.md}|${role}|${t}`,md:day.md,r:role,t,k,s,e,open:openSet.has(day.md+"|"+t)});
+      if(!roles.includes(r)||seen.has(t))continue;seen.add(t);
+      out.push({key:`${day.md}|${P.r}|${t}`,md:day.md,r:P.r,t,k,s,e,open:openSet.has(day.md+"|"+t)});
     }
   }
   return out;
@@ -386,7 +386,7 @@ function renderMe(){
   const meter=$("meter");meter.hidden=false;
   meter.innerHTML=`<div><span>應上</span><b>${P.up}</b></div><div><span>目前</span><b>${eff.length}</b></div>
    <div class="${diff>0?"short":diff<0?"over":"even"}"><span>${diff>0?"還少":diff<0?"多出":"剛好"}</span><b>${diff>0?diff:diff<0?-diff:"✓"}</b></div>`;
-  $("stChip").innerHTML=statusChip(me);
+  $("stChip").innerHTML=isOwner?"":statusChip(me);
   const r=REQ["p"+me];
   const role=P.r==="兼職"?"兼職":"正職";
   const needPick=draft.decline.size>0||diff>0||draft.pick.size>0;
@@ -449,6 +449,12 @@ function renderMe(){
   let label,msg,dis=false;
   if(changes===0){label=done?"已確認 ✓":"全部可以，送出確認";dis=done||sending;msg=done?"你已確認全部可以配合。之後要改，點日期改「不能」再送出。":"主管預排的班你都可以上的話，按這裡送出。";}
   else{label="送出變更（等主管核准）";dis=c.hard.length>0||sending;msg=c.hard.length?"有班別衝突，先調整再送出。":`不能 ${draft.decline.size} 班、改選 ${draft.pick.size} 班${diff>0?`，還少 ${diff} 班`:""}。`;}
+  if(isOwner){const iss=ownerIssues(eff,c);
+    msg=changes===0?"點日期可以請假、改時段或補班；改完在這裡檢查並套用。":iss.length?"還不能套用：\n"+iss.join("\n"):`檢查通過：不能 ${draft.decline.size} 班、改選 ${draft.pick.size} 班${diff>0?`，還少 ${diff} 班`:diff<0?`，多 ${-diff} 班`:""}。按下去直接改正式班表。`;
+    h+=`<div class="sendbox">${flashHtml()}<div class="msg" style="white-space:pre-line">${esc(msg)}</div><div class="acts">
+    <button class="btn ok" data-oapply="1" ${changes===0||iss.length||sending?"disabled":""}>${sending?"套用中…":"同意，直接改正式班表"}</button>
+    ${changes?`<button class="btn" data-reset="1">取消變更</button>`:""}
+    <button class="btn" data-go="all">← 回總班表</button></div></div>`;main.innerHTML=h;return;}
   h+=`<div class="sendbox">${flashHtml()}<div class="msg">${esc(msg)}</div><div class="acts">
     <button class="btn pri" data-submit="1" ${dis?"disabled":""}>${sending?"送出中…":label}</button>
     ${changes?`<button class="btn" data-reset="1">取消變更</button>`:""}
@@ -466,6 +472,7 @@ document.addEventListener("click",e=>{
   else if(t.dataset.pick){const s=choices(me).find(x=>x.key===t.dataset.pick);if(s){draft.pick.set(s.key,s);dirty=true;selMe=null;render();}}
   else if(t.dataset.unpick){draft.pick.delete(t.dataset.unpick);dirty=true;render();}
   else if(t.dataset.submit)submit();
+  else if(t.dataset.oapply)ownerApply();
   else if(t.dataset.reset){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;render();}
   else if(t.dataset.go)setView(t.dataset.go);
   else if(t.dataset.rper){const pi=+t.dataset.rper;rper=rper===pi?null:pi;rday=null;render();}
@@ -480,6 +487,29 @@ document.addEventListener("click",e=>{
 document.addEventListener("input",e=>{if(e.target.id==="note"){draft.note=e.target.value;dirty=true;}
   if(e.target.id&&e.target.id.startsWith("reply-"))replies[e.target.id.slice(6)]=e.target.value;});
 
+/* ---------- 主管自己調班：檢查通過就直接改正式班表 ---------- */
+function ownerIssues(eff,c){
+  const out=[...c.hard,...c.soft];
+  const days=new Set([...[...draft.decline].map(id=>ASSIGN[id]&&ASSIGN[id].md).filter(Boolean),...[...draft.pick.values()].map(p=>p.md)]);
+  for(const md of [...days].sort()){
+    const list=Object.entries(ASSIGN).filter(([id,a])=>a.md===md&&!draft.decline.has(id)).map(([,a])=>a);
+    for(const p of draft.pick.values())if(p.md===md)list.push({md,pi:0,r:"主管",s:p.s,e:p.e,t:p.t});
+    for(const x of dayIssues(md,list))out.push(`${fmtMd(md)}（${WD[DAY_BY_MD[md].w]}）${x}`);
+  }
+  return out;
+}
+async function ownerApply(){
+  if(sending||!isOwner)return;
+  const eff=effective(0,draft.decline,[...draft.pick.values()]);const iss=ownerIssues(eff,checks(eff));
+  if(iss.length){toast("還有問題沒解決，不能套用","err");return;}
+  const decl=[...draft.decline],picks=[...draft.pick.values()];
+  sending=true;toast("套用中…","busy");
+  try{await mutate(pl=>{for(const id of decl)delete pl.assign[id];
+      for(const p of picks)pl.assign[`${p.md}-0`]={md:p.md,pi:0,n:PEOPLE[0].n,r:"主管",t:p.t,k:p.s<=12.5?"早":(p.e>=23?"晚":"中"),s:p.s,e:p.e};
+      pushVersion(pl,"主管自調");});
+    sending=false;draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;toast("已改好正式班表，也存了一版「主管自調」");}
+  catch(e){sending=false;toast(e&&e.msg||("套用失敗："+(e&&e.code||"請再試一次")),"err");}
+}
 let sending=false;
 async function submit(){
   if(me===null||sending)return;
@@ -692,7 +722,7 @@ async function login(pin){
   storeBroken=false;
   const ws=j.wraps;
   const a=await unwrapKey(pin,ws.admin);
-  if(a){keepGood(j);DKraw=a;DK=await importDK(a);isOwner=true;me=null;lsSet("pin",pin);lsSet("who","");
+  if(a){keepGood(j);DKraw=a;DK=await importDK(a);isOwner=true;me=PEOPLE.length?0:0;lsSet("pin",pin);lsSet("who","");
     try{await loadAdminKey(pin,j);}catch(e){DK=null;DKraw=null;isOwner=false;return "管理資料讀取失敗："+(e&&e.code||e&&e.message||"錯誤");}
     afterLogin();applyPayload(await decPayload(j));return "";}
   const vk=await unwrapKey(pin,ws.viewer);
@@ -708,7 +738,7 @@ async function login(pin){
 }
 function pickWho(pi){const s=loginState;if(!s||!s.matches.includes(pi))return;me=pi;lsSet("pin",s.pin);lsSet("who",String(pi));loginState=null;afterLogin();applyPayload(s.pl);}
 function afterLogin(){
-  $("tabs").hidden=false;$("tabAdmin").hidden=!(isOwner||isViewer);$("tabMe").hidden=isOwner||isViewer;
+  $("tabs").hidden=false;$("tabAdmin").hidden=!(isOwner||isViewer);$("tabMe").hidden=isViewer;
   $("tabAdmin").textContent=isViewer?"全員狀態":"管理";
   $("whoName").textContent=isOwner?"主管（管理者）":isViewer?"其他主管（只能看）":"";
   setTabs("all");
