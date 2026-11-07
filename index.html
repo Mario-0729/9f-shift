@@ -302,9 +302,16 @@ function loadDraft(pi){
   draftFor=pi;dirty=false;draftStamp=stampOf(pi);
 }
 function stampOf(pi){const r=REQ["p"+pi];return r?r.status+"@"+(r.decidedAt||r.at||0):"";}
+const seenOf=pi=>officialOf(pi).map(a=>a.md+"|"+a.t);
+function chgOf(pi){ // 本人上次確認後，正式班表被改了哪些天
+  const r=REQ["p"+pi];if(!r||!r.seen||r.status==="pending")return [];
+  const old={},cur={};r.seen.forEach(x=>{const [m,t]=String(x).split("|");old[m]=t;});officialOf(pi).forEach(a=>cur[a.md]=a.t);
+  const out=[];for(const m of new Set([...Object.keys(old),...Object.keys(cur)].map(String)))if(old[m]!==cur[m]&&DAY_BY_MD[+m])out.push({md:+m,from:old[m]||"休",to:cur[m]||"休"});
+  return out.sort((a,b)=>a.md-b.md);}
 function statusChip(pi){
   const r=REQ["p"+pi];
-  if(!r)return `<span class="chip">尚未回覆</span>`;
+  if(!r||r.status==="none")return chgOf(pi).length?`<span class="chip wait">班表異動，待確認</span>`:`<span class="chip">尚未回覆</span>`;
+  if(chgOf(pi).length)return `<span class="chip wait">班表異動，待確認</span>`;
   return {confirmed:`<span class="chip ok">已確認</span>`,pending:`<span class="chip wait">待主管核准</span>`,approved:`<span class="chip ok">變更已核准</span>`,rejected:`<span class="chip no">變更被退回</span>`}[r.status]||"";
 }
 const ROLE_ORD={主管:0,正職:1,兼職:2};
@@ -401,6 +408,8 @@ function renderMe(){
   if(r&&r.status==="rejected")h+=`<div class="banner warn">主管審核完了，有變更被退回。${rl}${dl}<br>下面是目前的正式班表，可以重新回覆。</div>`;
   if(r&&r.status==="approved")h+=`<div class="banner">變更都核准了，下面就是你的正式班表。${dl}</div>`;
   if(r&&r.status==="pending")h+=`<div class="banner warn">已送出，等主管審核中。還可以修改後重送。${dl}${rl}</div>`;
+  const chg=isOwner?[]:chgOf(me);
+  if(chg.length)h+=`<div class="banner warn"><b>主管調整了你的班，請確認：</b>${chg.map(x=>`<br>${fmtMd(x.md)}（${WD[DAY_BY_MD[x.md].w]}） <span class="tm">${x.from}</span> → <span class="tm">${x.to}</span>`).join("")}<br>可以配合就按最下面「同意異動，送出確認」；不行的話點那天改「不能」再送出。</div>`;
   h+=`<div class="legend"><span><i class="sw ok"></i>可以</span><span><i class="sw no"></i>不能</span><span><i class="sw pk"></i>補選</span>${needPick?`<span><i class="sw op"></i>可選班</span>`:""}</div>`;
   let ph="";
   if(selMe!==null&&DAY_BY_MD[selMe]){
@@ -446,9 +455,10 @@ function renderMe(){
   if(c.hard.length||c.soft.length)h+=`<div class="banner warn">${[...c.hard,...c.soft].map(esc).join("<br>")}</div>`;
   h+=`<h2>備註（選填）</h2><textarea id="note" placeholder="例如：11/14 下午有課，晚上可以">${esc(draft.note)}</textarea>`;
   const changes=draft.decline.size+draft.pick.size;
-  const done=r&&r.status==="confirmed"&&changes===0&&!dirty;
+  const done=r&&r.status==="confirmed"&&changes===0&&!dirty&&!chg.length;
   let label,msg,dis=false;
-  if(changes===0){label=done?"已確認 ✓":"全部可以，送出確認";dis=done||sending;msg=done?"你已確認全部可以配合。之後要改，點日期改「不能」再送出。":"主管預排的班你都可以上的話，按這裡送出。";}
+  if(changes===0&&chg.length){label="同意異動，送出確認";dis=sending;msg=`主管調整了 ${chg.length} 天（見最上面），可以配合就按這裡。`;}
+  else if(changes===0){label=done?"已確認 ✓":"全部可以，送出確認";dis=done||sending;msg=done?"你已確認全部可以配合。之後要改，點日期改「不能」再送出。":"主管預排的班你都可以上的話，按這裡送出。";}
   else{label="送出變更（等主管核准）";dis=c.hard.length>0||sending;msg=c.hard.length?"有班別衝突，先調整再送出。":`不能 ${draft.decline.size} 班、改選 ${draft.pick.size} 班${diff>0?`，還少 ${diff} 班`:""}。`;}
   if(isOwner){const iss=ownerIssues(eff,c);
     msg=changes===0?"點日期可以請假、改時段或補班；改完在這裡檢查並套用。":iss.length?"還不能套用：\n"+iss.join("\n"):`檢查通過：不能 ${draft.decline.size} 班、改選 ${draft.pick.size} 班${diff>0?`，還少 ${diff} 班`:diff<0?`，多 ${-diff} 班`:""}。按下去直接改正式班表。`;
@@ -517,6 +527,7 @@ async function submit(){
   const changes=draft.decline.size+draft.pick.size;
   const data={n:PEOPLE[me].n,pi:me,decline:[...draft.decline],pick:[...draft.pick.values()],note:draft.note||"",
     status:changes?"pending":"confirmed",at:Date.now()};
+  {const old=REQ["p"+me];if(!changes)data.seen=seenOf(me);else if(old&&old.seen)data.seen=old.seen;}
   sending=true;toast("送出中…","busy");
   const timeout=new Promise((_,rej)=>setTimeout(()=>rej({code:"timeout"}),12000));
   try{await Promise.race([db.doc("req/p"+me).set(data),timeout]);sending=false;dirty=false;
@@ -584,12 +595,12 @@ async function renderAdmin(){
     v+=`</div><p class="note">待主管審核的變更：${items.length} 件。</p>`;main.innerHTML=v;return;}
   if(!isOwner){main.innerHTML=`<div class="empty">只有主管可以看這頁。</div>`;return;}
   const staff=PEOPLE.filter(p=>p.r!=="主管"&&!p.gone);
-  const cnt={none:0,confirmed:0,pending:0,approved:0,rejected:0};
-  staff.forEach(p=>{const r=REQ["p"+p.i];cnt[r?r.status:"none"]++;});
+  const cnt={none:0,confirmed:0,pending:0,approved:0,rejected:0,changed:0};
+  staff.forEach(p=>{const r=REQ["p"+p.i];const st=chgOf(p.i).length?"changed":r?r.status:"none";cnt[st]=(cnt[st]||0)+1;});
   const items=pendingItems();
   const ppl=[...new Set(items.map(x=>x.pi))].sort((x,y)=>ROLE_ORD[PEOPLE[x].r]-ROLE_ORD[PEOPLE[y].r]||x-y);
   if(rper!==null&&!ppl.includes(rper))rper=null;
-  let h=flashHtml()+`<div class="meter" style="margin-top:14px"><div><span>待審變更</span><b style="color:var(--warn)">${items.length}</b></div><div><span>已確認／核准</span><b>${cnt.confirmed+cnt.approved}</b></div><div><span>未回覆</span><b>${cnt.none+cnt.rejected}</b></div></div>`;
+  let h=flashHtml()+`<div class="meter" style="margin-top:14px"><div><span>待審變更</span><b style="color:var(--warn)">${items.length}</b></div><div><span>已確認／核准</span><b>${cnt.confirmed+cnt.approved}</b></div><div><span>未回覆／異動待確認</span><b>${cnt.none+cnt.rejected+cnt.changed}</b></div></div>`;
   h+=`<h2>選人審核｜點一個人，先調整他的</h2>`;
   if(!ppl.length)h+=`<div class="empty">目前沒有要審核的變更。</div>`;
   else h+=`<div class="dchips">${ppl.map(pi=>{const n=items.filter(x=>x.pi===pi).length;const P=PEOPLE[pi];
@@ -653,7 +664,7 @@ async function decide(ids,ok){
       }
       const left=decline.filter(id=>ASSIGN[id]).length+pick.length;
       const upd={decline,pick,done,rej,decidedAt:Date.now()};
-      if(!left){upd.status=rej.length?"rejected":"approved";if(rej.length)upd.reply=reply;}
+      if(!left){upd.status=rej.length?"rejected":"approved";if(rej.length)upd.reply=reply;upd.seen=seenOf(+k.slice(1));}
       await db.doc("req/"+k).update(upd);
     }
     if(ok&&items.length>fail.length){const who=[...new Set(items.map(x=>x.n))].join("、");try{await mutate(pl=>pushVersion(pl,`核准 ${who}`));}catch(e){}}
