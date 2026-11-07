@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>[預覽] 星聚點 9F 班表</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* 版面：手機優先單欄；頂部黏著列（身分＋缺班計數），下方逐週列出班別卡 */
+:root{
+  --bg:#f3f4f2; --panel:#ffffff; --line:#d9dcd6; --fg:#1b1f1c; --muted:#646b65;
+  --accent:#1f5f8b; --accent-ink:#ffffff; --ok:#227a4b; --ok-bg:#e3f1e8;
+  --no:#b3471d; --no-bg:#fbe7dc; --warn:#9a6a00; --warn-bg:#fbf1d4; --pick:#1f5f8b; --pick-bg:#e2edf5;
+  --k1:#c98a12; --k2:#2f7fb8; --k3:#7a55b8; --sel:#1b1f1c; --peak:rgba(201,138,18,.14); --grid:rgba(27,31,28,.08);
+  --f-body:"Noto Sans TC",system-ui,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141715; --panel:#1d211e; --line:#323833; --fg:#e8ebe7; --muted:#9aa29b;
+  --accent:#6fb0dc; --accent-ink:#0d1a24; --ok:#6cc792; --ok-bg:#1d3326; --no:#f08a5d; --no-bg:#3a2218;
+  --warn:#e3b54a; --warn-bg:#352c14; --pick:#6fb0dc; --pick-bg:#1a2c3a; --k1:#c08a22; --k2:#3d86bd; --k3:#8a6cc4; --sel:#e8ebe7; --peak:rgba(224,169,58,.13); --grid:rgba(232,235,231,.08); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141715; --panel:#1d211e; --line:#323833; --fg:#e8ebe7; --muted:#9aa29b;
+  --accent:#6fb0dc; --accent-ink:#0d1a24; --ok:#6cc792; --ok-bg:#1d3326; --no:#f08a5d; --no-bg:#3a2218;
+  --warn:#e3b54a; --warn-bg:#352c14; --pick:#6fb0dc; --pick-bg:#1a2c3a; --k1:#c08a22; --k2:#3d86bd; --k3:#8a6cc4; --sel:#e8ebe7; --peak:rgba(224,169,58,.13); --grid:rgba(232,235,231,.08); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px}
+header.top{background:var(--panel);border-bottom:1px solid var(--line)}
+header.top .in{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+h1{font-size:17px;font-weight:900;margin:0;letter-spacing:.02em;text-wrap:balance}
+h1 small{font-weight:500;color:var(--muted);font-size:13px;margin-left:6px}
+.tabs{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.tabs button{border:0;background:transparent;color:var(--muted);padding:5px 12px;font:inherit;font-size:13px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:700}
+select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.meter{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.meter div{background:var(--bg);border-radius:8px;padding:6px 8px;display:flex;flex-direction:column}
+.meter span{font-size:11px;color:var(--muted);letter-spacing:.05em}
+.meter b{font-family:var(--f-mono);font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums}
+.meter .short b{color:var(--no)} .meter .even b{color:var(--ok)} .meter .over b{color:var(--warn)}
+.chip{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--bg);color:var(--muted);white-space:nowrap}
+.chip.ok{background:var(--ok-bg);color:var(--ok)} .chip.no{background:var(--no-bg);color:var(--no)}
+.chip.wait{background:var(--warn-bg);color:var(--warn)} .chip.pick{background:var(--pick-bg);color:var(--pick)}
+h2{font-size:14px;margin:22px 0 8px;color:var(--muted);font-weight:700;letter-spacing:.06em}
+h2.sech{font-size:18px;color:var(--fg);margin:28px 0 4px;padding-top:16px;border-top:2px solid var(--line);letter-spacing:.02em}
+.note{font-size:13px;color:var(--muted);margin:10px 0}
+.banner{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:14px;font-size:14px}
+.banner.warn{background:var(--warn-bg);border-color:transparent;color:var(--fg)}
+.list{display:flex;flex-direction:column;gap:6px}
+.shift{display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.shift.declined{background:var(--no-bg);border-color:transparent}
+.shift.declined .tm{text-decoration:line-through;color:var(--muted)}
+.shift.picked{background:var(--pick-bg);border-color:transparent}
+.date{display:flex;flex-direction:column;align-items:center;line-height:1.15}
+.date b{font-family:var(--f-mono);font-size:16px;font-variant-numeric:tabular-nums}
+.date span{font-size:12px;color:var(--muted)}
+.date.we span{color:var(--no)}
+.info{min-width:0}
+.info .k{font-size:12px;font-weight:700;color:var(--muted)}
+.tm{font-family:var(--f-mono);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.why{font-size:12px;color:var(--no)} .why.soft{color:var(--warn)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);color:var(--muted);font:inherit;font-size:13px;padding:6px 10px;cursor:pointer;min-width:52px}
+.seg button.on-ok{background:var(--ok);color:var(--panel);font-weight:700}
+.seg button.on-no{background:var(--no);color:var(--panel);font-weight:700}
+.btn{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:var(--panel);font-weight:700}
+.btn.no{color:var(--no);border-color:var(--no)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.wk{font-size:12px;color:var(--muted);margin:14px 0 4px;display:flex;justify-content:space-between}
+.wk.bad{color:var(--no);font-weight:700}
+.sendbox{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.sendbox .msg{font-size:14px;color:var(--muted)}
+.sendbox .acts{display:flex;gap:8px;flex-wrap:wrap}
+.sendbox .btn{padding:11px 16px;font-size:15px;flex:1 1 auto;text-align:center}
+.flash{border-radius:10px;padding:10px 12px;font-size:14px;font-weight:700}
+.flash.ok{background:var(--ok-bg);color:var(--ok)} .flash.err{background:var(--no-bg);color:var(--no)} .flash.busy{background:var(--warn-bg);color:var(--warn)}
+.back{font:inherit;font-size:14px;border:0;background:transparent;color:var(--accent);padding:10px 0 0;cursor:pointer;font-weight:700}
+textarea{width:100%;min-height:64px;resize:vertical}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.card h3{margin:0;font-size:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card .acts{display:flex;gap:8px;justify-content:flex-end}
+.mini{display:flex;flex-direction:column;gap:3px;font-size:14px}
+.mini .tm{font-size:13px}
+.ppl{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14px}
+.ppl .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.ppl .role{color:var(--muted);font-size:12px;margin-left:4px}
+.empty{padding:30px 10px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:14px;z-index:20}
+/* 日曆 */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-top:10px}
+.ch{text-align:center;font-size:12px;color:var(--muted);font-weight:700;padding:2px 0}
+.ch.we,.dn.we{color:var(--no)}
+.cell{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 3px 5px;display:flex;flex-direction:column;align-items:stretch;gap:3px;font:inherit;color:var(--fg);text-align:left;cursor:pointer;min-height:64px}
+.cell.out{background:transparent;border-style:dashed;opacity:.45;cursor:default}
+.cell.sel{outline:2px solid var(--sel);outline-offset:0}
+.cell.today{background:var(--pick-bg);border:2px solid var(--accent);padding:3px 2px 4px}
+.cell.today .dn .d{background:var(--accent);color:var(--accent-ink);border-radius:99px;padding:2px 4px;margin:-2px 0 0 -2px}
+.cell.today .dn small{color:var(--accent);font-weight:700;white-space:nowrap}
+.dn{font-family:var(--f-mono);font-size:13px;font-weight:600;line-height:1;display:flex;justify-content:space-between;align-items:baseline;padding:0 2px;font-variant-numeric:tabular-nums}
+.dn small{font-family:var(--f-body);font-size:10px;color:var(--muted);font-weight:500}
+.names{display:flex;flex-direction:column;gap:1px}
+.nm{font-style:normal;font-size:11px;line-height:1.3;padding-left:4px;border-left:3px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:clip}
+.k-早{border-color:var(--k1)} .k-中{border-color:var(--k2)} .k-晚{border-color:var(--k3)}
+.nm.mine{background:var(--accent);color:var(--accent-ink);font-weight:700;border-radius:0 3px 3px 0}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px;align-items:center}
+.legend span{display:flex;align-items:center;gap:4px}
+i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10px solid}
+.mine-dot{background:var(--accent);color:var(--accent-ink);padding:0 4px;border-radius:3px;font-size:11px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px}
+.sw.ok{background:var(--ok)} .sw.no{background:var(--no)} .sw.pk{background:var(--pick)} .sw.op{border:2px dashed var(--pick)}
+.cell.all.m-ok{background:var(--ok-bg)}.cell.all.m-no{background:var(--no-bg)}.cell.all.m-pk{background:var(--pick-bg)}.cell.all.m-op{border:2px dashed var(--pick);padding:3px 2px 4px}
+.cell.all.today{border:2px solid var(--accent);padding:3px 2px 4px}
+.nm.mine.x{text-decoration:line-through;opacity:.6}.nm.mine.add{background:var(--pick);color:var(--panel)}
+.nextcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0 6px;display:flex;flex-direction:column;gap:6px}
+.nextcard .lbl{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em}
+.nextcard .big{font-size:20px;font-weight:800;line-height:1.25}.nextcard .big .tm{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.nextcard .big small{font-size:12px;font-weight:700;background:var(--accent);color:var(--accent-ink);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:3px}
+.nextcard .more{font-size:13px;color:var(--muted);font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.nextcard .stats{display:flex;gap:14px;font-size:13px;color:var(--muted);flex-wrap:wrap}.nextcard .stats b{color:var(--fg)}
+.mybox{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0 10px;background:var(--panel)}
+.mybox>.k{font-weight:700;color:var(--fg);margin-bottom:4px}
+.mine-cal .sb{display:flex;flex-direction:column;align-items:center;gap:0;line-height:1.2;font-family:var(--f-mono);font-size:11px;font-variant-numeric:tabular-nums}
+.mine-cal .sb b{font-family:var(--f-body);font-size:12px}
+.mine-cal.ok{background:var(--ok-bg);border-color:transparent}.mine-cal.ok .sb b{color:var(--ok)}
+.mine-cal.no{background:var(--no-bg);border-color:transparent}.mine-cal.no .sb span{text-decoration:line-through;color:var(--muted)}.mine-cal.no .sb b{color:var(--no)}
+.mine-cal.pk{background:var(--pick-bg);border-color:transparent}.mine-cal.pk .sb b{color:var(--pick)}
+.mine-cal.op{border:2px dashed var(--pick)}.mine-cal.op .sb b{color:var(--pick);font-size:14px}.mine-cal.op .sb span{font-family:var(--f-body);color:var(--pick)}
+.off{color:var(--muted);font-family:var(--f-body)}
+.mine-cal.no .sb .alt{text-decoration:none;color:var(--pick);font-family:var(--f-body);font-size:10px;font-weight:700}
+.expand{grid-column:1/-1;background:var(--panel);border:1px solid var(--sel);border-radius:10px;padding:4px 10px 10px;margin:2px 0 6px;scroll-margin-top:170px;scroll-margin-bottom:80px}
+.expand .tlw{border:0;padding:0;background:transparent}
+.expand .dhead{flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:8px 0}
+.expand .dmeta{flex-basis:100%}
+.expand .x{margin-left:auto;font:inherit;font-size:12px;border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:6px;padding:3px 8px;cursor:pointer}
+.cell.sel{border-color:var(--sel)}
+.dl{display:flex;flex-direction:column;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.dr{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;font-size:14px;padding:3px 0}
+.dr.mine .nm2{font-weight:900;color:var(--accent)}
+.shift .info{grid-column:1/3}
+/* 職務色與時間軸 */
+.r0{border-color:var(--k3)} .r1{border-color:var(--k2)} .r2{border-color:var(--k1)}
+.nm.mine{background:var(--fg);color:var(--bg);font-weight:700;border-radius:0 3px 3px 0}
+.dhead{display:flex;flex-direction:column;gap:4px;margin:20px 0 8px}
+.dhead h2{margin:0;font-size:18px;color:var(--fg);letter-spacing:.02em}
+.dmeta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--muted);align-items:center}
+.dmeta b{color:var(--fg)}
+.pkk{display:inline-block;width:12px;height:10px;background:var(--peak);border-radius:2px;margin-right:4px;vertical-align:-1px}
+.tlw{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px 10px}
+.tl{display:grid;grid-template-columns:minmax(76px,auto) minmax(0,1fr);column-gap:8px;row-gap:3px;align-items:center}
+.axis{position:relative;height:16px}
+.axis span{position:absolute;transform:translateX(-50%);font-family:var(--f-mono);font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.axis span:first-child{transform:none}.axis span:last-child{transform:translateX(-100%)}
+.lab{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.lab b{font-size:13px;white-space:nowrap}
+.lab .tm{font-size:11px;font-weight:500;color:var(--muted)}
+.lab.mine b{color:var(--fg);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.trk{position:relative;height:26px;border-radius:4px;background-color:var(--bg)}
+.trk .pk{position:absolute;top:0;bottom:0;background:var(--peak)}
+.bar{position:absolute;top:4px;bottom:4px;border-radius:4px;display:flex;align-items:center;overflow:hidden}
+.bar em{font-style:normal;font-size:10px;font-weight:700;color:#fff;padding:0 5px;white-space:nowrap}
+.bar.r0{background:var(--k3)} .bar.r1{background:var(--k2)} .bar.r2{background:var(--k1)}
+.bar.mine{box-shadow:0 0 0 2px var(--fg)}
+.bar.biz{background:var(--fg);opacity:.8;top:8px;bottom:8px}
+.bar.prep{background:var(--muted);opacity:.45;top:8px;bottom:8px}
+.grp{grid-column:1/-1;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:6px;margin-top:4px;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}
+.grp b{color:var(--fg);font-size:13px}
+.offl{font-size:12px}
+/* 逐日審核 */
+.dchips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.dchip{flex:0 0 auto;font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:10px;padding:6px 10px;display:flex;flex-direction:column;align-items:center;line-height:1.2;cursor:pointer;font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums}
+.dchip small{font-family:var(--f-body);font-size:11px;color:var(--muted);font-weight:500}
+.dchip b{font-size:11px;color:var(--warn)}
+.dchip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.dchip.on small{color:var(--bg)}
+.review{margin-top:10px}
+.pchip span{font-family:var(--f-body);font-weight:700}
+.dayrev{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px}
+.dayrev h3{margin:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ritem{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+.ritem .acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.rinfo{font-size:14px}.rinfo .role{color:var(--muted);font-size:12px;margin:0 4px}
+.pcal{background:var(--bg);border-radius:10px;padding:10px}
+.sub{font-size:12px;color:var(--muted);margin-top:6px}
+.reply{font:inherit;font-size:13px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.bar.c-del{background:repeating-linear-gradient(135deg,var(--muted) 0 4px,transparent 4px 8px)!important;opacity:.6}
+.bar.c-del em{color:var(--fg)}
+.bar.c-add{box-shadow:0 0 0 2px var(--ok)}
+.lab small{font-size:10px;font-weight:700;margin-left:4px;padding:0 4px;border-radius:3px}
+.lab.c-del b{text-decoration:line-through;color:var(--muted)}.lab.c-del small{background:var(--no-bg);color:var(--no);display:inline-block;text-decoration:none}
+.lab.c-add small{background:var(--ok-bg);color:var(--ok)}
+.pinrow{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
+.pinrow .role{color:var(--muted);font-size:12px;margin-left:4px}
+.pinrow input{min-width:0}
+.verrow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 10px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
+.verrow .acts{display:flex;gap:6px}
+.verpager{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.verdiff{background:var(--bg);border-radius:8px;padding:8px 10px;font-size:13px;display:flex;flex-direction:column;gap:2px}
+.pinval{font-family:var(--f-mono);font-size:16px;font-weight:600;letter-spacing:.15em}
+@media (prefers-reduced-motion:no-preference){.shift{transition:background .15s}}
+</style>
+
+<header class="top"><div class="in">
+  <div class="row">
+    <h1>星聚點 9F 班表<small>11/1–11/30</small></h1>
+    <div class="tabs" id="tabs" hidden>
+      <button id="tabAll" aria-pressed="true">班表</button>
+      <button id="tabMe" aria-pressed="false">我的班</button>
+      <button id="tabAdmin" aria-pressed="false" hidden>管理</button>
+    </div>
+  </div>
+  <div class="row" id="whoRow" hidden>
+    <span style="font-size:13px;color:var(--muted)">我是</span><b id="whoName"></b>
+    <span id="stChip"></span>
+    <button id="reload" class="back" style="padding:0;margin-left:auto;font-size:13px">重新整理</button>
+    <button id="logout" class="back" style="padding:0;font-size:13px">登出</button>
+  </div>
+  <div class="meter" id="meter" hidden></div>
+</div></header>
+
+<main class="wrap" id="main"><div class="empty" id="loading">載入中…</div></main>
+<footer id="bar" hidden></footer><div id="toast" hidden></div>
+
+<script id="app">
+const CFG={"types":[{"name":"週一～四","shifts":[["主管","14:00-23:00","中",14.0,23.0],["正職","12:30-21:30","早",12.5,21.5],["正職","14:00-23:00","中",14.0,23.0],["正職","14:00-23:00","中",14.0,23.0],["兼職","13:00-22:00","中",13.0,22.0],["兼職","18:30-22:30","晚",18.5,22.5]]},{"name":"週五","shifts":[["主管","15:00-00:00","中",15.0,24.0],["正職","12:30-21:30","早",12.5,21.5],["正職","15:00-00:00","中",15.0,24.0],["正職","17:00-02:00","晚",17.0,26.0],["正職","17:00-02:00","晚",17.0,26.0],["兼職","17:00-02:00","晚",17.0,26.0],["兼職","18:30-22:30","晚",18.5,22.5],["兼職","20:00-02:00","晚",20.0,26.0]]},{"name":"週六","shifts":[["主管","13:00-22:00","中",13.0,22.0],["正職","10:30-19:30","早",10.5,19.5],["正職","10:30-19:30","早",10.5,19.5],["正職","10:30-19:30","早",10.5,19.5],["正職","17:00-02:00","晚",17.0,26.0],["正職","17:00-02:00","晚",17.0,26.0],["兼職","10:30-19:30","早",10.5,19.5],["兼職","10:30-19:30","早",10.5,19.5],["兼職","17:00-02:00","晚",17.0,26.0],["兼職","20:00-02:00","晚",20.0,26.0]]},{"name":"週日","shifts":[["主管","13:00-22:00","中",13.0,22.0],["正職","10:30-19:30","早",10.5,19.5],["正職","13:00-22:00","中",13.0,22.0],["正職","13:00-22:00","中",13.0,22.0],["正職","14:00-23:00","中",14.0,23.0],["正職","14:00-23:00","中",14.0,23.0],["兼職","13:00-22:00","中",13.0,22.0],["兼職","14:00-23:00","中",14.0,23.0]]},{"name":"訓練","shifts":[["主管","10:00-19:00","訓",10.0,19.0],["正職","10:00-19:00","訓",10.0,19.0],["正職","13:30-22:30","訓",13.5,22.5],["兼職","10:00-19:00","訓",10.0,19.0],["兼職","18:30-22:30","訓",18.5,22.5]]}]};
+const WD=["日","一","二","三","四","五","六"];
+const DAYS=[];for(let d=1;d<=30;d++){const dt=new Date(2026,10,d);const w=dt.getDay();DAYS.push({md:1100+d,d,w,type:d<6?4:w===5?1:w===6?2:w===0?3:0,idx:d-1});}
+const PICK_FROM=1104; // 11/1–11/3 開幕前，只記實際出勤，不開放選班
+const DAY_BY_MD=Object.fromEntries(DAYS.map(x=>[x.md,x]));
+let PEOPLE=[];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtMd=md=>`${Math.floor(md/100)}/${md%100}`;
+let isOwner=false,isViewer=false;
+let ASSIGN={},REQ={},loaded={a:false,r:false};
+let view="all",me=null;           // me = person index
+let draft={decline:new Set(),pick:new Map(),note:""}; // pick: key -> slot
+let draftFor=null,dirty=false,draftStamp="";
+
+let flash=null; // {t,kind}
+function toast(t,kind="ok"){flash={t,kind};render();clearTimeout(toast.t);if(kind!=="busy")toast.t=setTimeout(()=>{flash=null;render();},6000);}
+const flashHtml=()=>flash?`<div class="flash ${flash.kind}" role="status">${esc(flash.t)}</div>`:"";
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+
+/* ---------- 班表計算 ---------- */
+function officialOf(pi){return Object.entries(ASSIGN).filter(([,a])=>a.pi===pi).map(([id,a])=>({id,...a})).sort((x,y)=>x.md-y.md);}
+function choices(pi){ // 員工可選：自己職務在每一天範本裡的所有班別（標出哪些是空缺）
+  const P=PEOPLE[pi],role=P.r==="兼職"?"兼職":"正職",roles=P.r==="主管"?["主管","正職"]:[role];
+  const openSet=new Set(openSlots().filter(s=>s.r===role).map(s=>s.md+"|"+s.t));
+  const out=[];
+  for(const day of DAYS){
+    if(day.md<PICK_FROM||(P.from&&day.md<P.from))continue;
+    const seen=new Set();
+    for(const [r,t,k,s,e] of CFG.types[day.type].shifts){
+      if(!roles.includes(r)||seen.has(t))continue;seen.add(t);
+      out.push({key:`${day.md}|${P.r}|${t}`,md:day.md,r:P.r,t,k,s,e,open:openSet.has(day.md+"|"+t)});
+    }
+  }
+  return out;
+}
+function openSlots(){ // 範本 − 正式班表
+  const out=[];
+  for(const day of DAYS){
+    if(day.md<PICK_FROM)continue;
+    const used={};for(const a of Object.values(ASSIGN))if(a.md===day.md){const k=a.r+"|"+a.t;used[k]=(used[k]||0)+1;}
+    const seen={};
+    for(const [r,t,k,s,e] of CFG.types[day.type].shifts){
+      const key=r+"|"+t;seen[key]=(seen[key]||0)+1;
+      if(seen[key]>(used[key]||0))out.push({key:`${day.md}|${r}|${t}|${seen[key]}`,md:day.md,r,t,k,s,e});
+    }
+  }
+  return out;
+}
+function effective(pi,decl,picks){
+  const list=officialOf(pi).filter(a=>!decl.has(a.id)).map(a=>({md:a.md,t:a.t,k:a.k,s:a.s,e:a.e,src:"off",id:a.id}));
+  for(const p of picks)list.push({md:p.md,t:p.t,k:p.k,s:p.s,e:p.e,src:"pick",key:p.key});
+  return list.sort((x,y)=>x.md-y.md||x.s-y.s);
+}
+const absStart=x=>DAY_BY_MD[x.md].idx*24+x.s, absEnd=x=>DAY_BY_MD[x.md].idx*24+x.e;
+function weekOf(md){const d=DAY_BY_MD[md];const mon=d.d-((d.w+6)%7);return Math.max(mon,1);} // 週一為一週開始
+function checks(list){ // 回傳 {hard:[], soft:[]}
+  const hard=[],soft=[];
+  for(let i=1;i<list.length;i++){
+    const a=list[i-1],b=list[i];
+    if(a.md===b.md)hard.push(`${fmtMd(b.md)} 同一天兩班`);
+    else{const gap=absStart(b)-absEnd(a);if(gap<11)hard.push(`${fmtMd(a.md)}→${fmtMd(b.md)} 間隔只有 ${gap} 小時（要 ≥11）`);}
+  }
+  const wk={};for(const x of list){const w=weekOf(x.md);wk[w]=(wk[w]||0)+1;}
+  for(const [w,c] of Object.entries(wk))if(c>5)soft.push(`${11}/${w} 那週排 ${c} 天（上限 5）`);
+  const days=[...new Set(list.map(x=>DAY_BY_MD[x.md].idx))].sort((a,b)=>a-b);
+  let run=1;for(let i=1;i<days.length;i++){run=days[i]===days[i-1]+1?run+1:1;if(run===7){soft.push(`連上 7 天以上（${fmtMd(DAYS[days[i]].md)} 前後）`);}}
+  return {hard,soft};
+}
+function pickBlock(pi,slot,decl,picks){ // 這個空缺能不能選
+  const base=effective(pi,decl,picks);
+  if(base.some(x=>x.md===slot.md))return "那天已有班";
+  const c=checks(effective(pi,decl,[...picks,slot]));
+  const h=c.hard.find(Boolean);return h?"跟前後班間隔不足 11 小時":"";
+}
+
+/* ---------- 員工檢視 ---------- */
+function loadDraft(pi){
+  const r=REQ["p"+pi];
+  draft={decline:new Set(),pick:new Map(),note:""};
+  if(r&&r.status==="pending"){
+    (r.decline||[]).forEach(id=>{if(ASSIGN[id])draft.decline.add(id)});
+    (r.pick||[]).forEach(p=>draft.pick.set(p.key,p));
+    draft.note=r.note||"";
+  }
+  draftFor=pi;dirty=false;draftStamp=stampOf(pi);
+}
+function stampOf(pi){const r=REQ["p"+pi];return r?r.status+"@"+(r.decidedAt||r.at||0):"";}
+const seenOf=pi=>officialOf(pi).map(a=>a.md+"|"+a.t);
+function chgOf(pi){ // 本人上次確認後，正式班表被改了哪些天
+  const r=REQ["p"+pi];if(!r||!r.seen||r.status==="pending")return [];
+  const old={},cur={};r.seen.forEach(x=>{const [m,t]=String(x).split("|");old[m]=t;});officialOf(pi).forEach(a=>cur[a.md]=a.t);
+  const out=[];for(const m of new Set([...Object.keys(old),...Object.keys(cur)].map(String)))if(old[m]!==cur[m]&&DAY_BY_MD[+m])out.push({md:+m,from:old[m]||"休",to:cur[m]||"休"});
+  return out.sort((a,b)=>a.md-b.md);}
+function statusChip(pi){
+  const r=REQ["p"+pi];
+  if(!r||r.status==="none")return chgOf(pi).length?`<span class="chip wait">班表異動，待確認</span>`:`<span class="chip">尚未回覆</span>`;
+  if(chgOf(pi).length)return `<span class="chip wait">班表異動，待確認</span>`;
+  return {confirmed:`<span class="chip ok">已確認</span>`,pending:`<span class="chip wait">待主管核准</span>`,approved:`<span class="chip ok">變更已核准</span>`,rejected:`<span class="chip no">變更被退回</span>`}[r.status]||"";
+}
+const ROLE_ORD={主管:0,正職:1,兼職:2};
+const shortN=n=>PEOPLE.some(p=>p.r==="主管"&&p.n===n)?"主管":n.length===3?n.slice(1):n;
+function calCells(){const out=[];for(let i=0;i<42;i++){const dt=new Date(2026,10,-5+i);if(dt.getMonth()===11)break;out.push(dt.getMonth()===9?dt.getDate()-31:dt.getDate());}return out;} // 從 10/26（週一）開始，10 月的格子用 ≤0 表示
+function calHead(){return ["一","二","三","四","五","六","日"].map((w,i)=>`<div class="ch${i>=5?" we":""}">${w}</div>`).join("");}
+const tm2=t=>{const [a,b]=t.split("-");return `<span>${a}</span><span>${b}</span>`;};
+let selAll=null,selMe=null;
+
+/* ---------- 總班表（首頁） ---------- */
+const OPEN=[{t:"13:00-23:00",o:[13,23],pk:[[18,22]],pkt:"18-22"},{t:"13:00-02:00",o:[13,26],pk:[[20,24]],pkt:"20-24"},
+  {t:"11:00-02:00",o:[11,26],pk:[[14,18],[20,24]],pkt:"14-18、20-24"},{t:"11:00-23:00",o:[11,23],pk:[[14,18],[20,22]],pkt:"14-18、20-22"},{t:"10:00-22:30",o:[10,22.5],pk:[],pkt:"無",train:true}];
+const RK={主管:"r0",正職:"r1",兼職:"r2"};
+const hl=h=>String(Math.floor(h)%24).padStart(2,"0");
+function renderAll(target,M){
+  $("meter").hidden=true;
+  $("stChip").innerHTML=me!==null?statusChip(me):"";
+  const today=new Date();const tmd=today.getMonth()===10?1100+today.getDate():0;
+  if(selAll!==null&&!DAY_BY_MD[selAll])selAll=null;
+  const byDay={};for(const a of Object.values(ASSIGN))(byDay[a.md]=byDay[a.md]||[]).push(a);
+  for(const k in byDay)byDay[k].sort((x,y)=>ROLE_ORD[x.r]-ROLE_ORD[y.r]||x.s-y.s||x.pi-y.pi);
+  let h=`<div class="legend"><span><i class="k r0"></i>主管</span><span><i class="k r1"></i>正職</span><span><i class="k r2"></i>兼職</span>${me!==null?`<span><b class="mine-dot">${esc(shortN(PEOPLE[me].n))}</b>＝你</span>`:""}<span>點日期展開當天時間</span></div>`;
+  const panel=selAll?tlPanel(selAll,byDay,{mine:M?M.ph:""}):"";
+  if(M)h=M.top+h.replace('<span>點日期展開當天時間</span>','<span><i class="sw ok"></i>我上班</span><span><i class="sw no"></i>不能</span><span><i class="sw pk"></i>補選</span>'+(M.needPick?'<span><i class="sw op"></i>可選班</span>':'')+'<span>點日期看當天、改班</span>');
+  h+=`<div class="cal" role="grid">${calHead()}`;
+  calCells().forEach((d,i,arr)=>{
+    const md=1100+d,day=DAY_BY_MD[md];
+    if(!day)h+=`<div class="cell out"><div class="dn">${d>0?d:d+31}</div></div>`;
+    else{const list=byDay[md]||[];const we=day.w===0||day.w===6;
+    const mc=M&&M.cells[md];
+    h+=`<button class="cell all${selAll===md?" sel":""}${md===tmd?" today":""}${mc?" m-"+mc:""}" data-allday="${md}" aria-expanded="${selAll===md}"${md===tmd?' aria-current="date"':""}>
+      <div class="dn${we?" we":""}">${md===tmd?`<span class="d">${d}</span>`:d}<small>${list.length}人</small></div>
+      <div class="names">${list.map(a=>`<i class="nm ${RK[a.r]}${a.pi===me?" mine"+(mc==="no"?" x":""):""}">${esc(shortN(a.n))}</i>`).join("")}${mc==="pk"?`<i class="nm mine add">＋${esc(shortN(PEOPLE[me].n))}</i>`:""}</div></button>`;}
+    if((i%7===6||i===arr.length-1)&&selAll&&Math.floor((selAll-1095)/7)===Math.floor(i/7))h+=`<div class="expand" id="dayp">${panel}</div>`;
+  });
+  h+=`</div><p class="note">工時含休息（9 小時班＝實際 8 小時＋休息 1 小時）。${M?"格子底色是你自己的班；名字是目前的正式班表，改班要主管核准後才會更新。":"這是目前的正式班表，同事改班要主管核准後才會更新到這裡。"}</p>`;
+  if(M)h+=M.bottom;
+  (target||$("main")).innerHTML=h;
+}
+function tlPanel(md,byDay,opt={}){
+  let h="";const sel=md;
+  const day=DAY_BY_MD[sel],list=byDay[sel]||[],op=OPEN[day.type];
+  const lo=Math.floor(Math.min(op.o[0]-0.5,...list.map(a=>a.s))),hi=Math.ceil(Math.max(op.o[1],...list.map(a=>a.e)));
+  const span=hi-lo,pct=x=>((x-lo)/span*100).toFixed(2)+"%",wid=(a,b)=>((b-a)/span*100).toFixed(2)+"%";
+  const grid=`background-image:repeating-linear-gradient(90deg,var(--grid) 0 1px,transparent 1px ${(200/span).toFixed(3)}%)`;
+  const peaks=op.pk.map(([a,b])=>`<span class="pk" style="left:${pct(a)};width:${wid(a,b)}"></span>`).join("");
+  const track=inner=>`<div class="trk" style="${grid}">${peaks}${inner}</div>`;
+  const nLive=list.filter(a=>a.chg!=="del").length;
+  h+=`<div class="dhead">${opt.review?"":`<h2>${fmtMd(sel)}（週${WD[day.w]}）</h2><button class="x" data-allday="${sel}" aria-label="收合">收合 ▲</button>`}
+    <div class="dmeta">${op.train?`<span><b>員工訓練日</b>（還沒開幕）</span><span>訓練 <b class="tm">${op.t}</b></span>`:`<span>營業 <b class="tm">${op.t}</b></span><span>開場準備 ${hl(op.o[0]-0.5)}:30</span><span><i class="pkk"></i>尖峰 ${op.pkt}</span>`}<span>上班 ${nLive} 人</span></div></div>${opt.mine||""}`;
+  h+=`<div class="tlw"><div class="tl">`;
+  // 時間刻度
+  let ticks="";for(let x=lo;x<=hi;x+=2)ticks+=`<span style="left:${pct(x)}">${hl(x)}</span>`;
+  h+=`<div class="lab"></div><div class="axis">${ticks}</div>`;
+  // 營業時間列
+  h+=`<div class="lab"><b>${op.train?"訓練":"營業"}</b><span class="tm">${op.t}</span></div>${track(`<span class="bar biz" style="left:${pct(op.o[0])};width:${wid(op.o[0],op.o[1])}"></span>${op.train?"":`<span class="bar prep" style="left:${pct(op.o[0]-0.5)};width:${wid(op.o[0]-0.5,op.o[0])}"></span>`}`)}`;
+  for(const role of ["主管","正職","兼職"]){
+    const rows=list.filter(a=>a.r===role);const liveR=rows.filter(a=>a.chg!=="del");
+    const offs=PEOPLE.filter(p=>!p.gone&&p.r===role&&!liveR.some(a=>a.pi===p.i)&&!(p.from&&sel<p.from));
+    h+=`<div class="grp"><b>${role}</b> ${liveR.length} 人${offs.length?`<span class="offl">休：${offs.map(p=>esc(p.n)).join("、")}</span>`:""}</div>`;
+    if(!rows.length&&role!=="兼職")h+=`<div class="lab"></div>${track("")}`;
+    for(const a of rows){
+      const len=a.e-a.s;
+      const tag=a.chg==="del"?"請假":a.chg==="add"?"新加入":"";
+      h+=`<div class="lab${a.pi===me?" mine":""}${a.chg?" c-"+a.chg:""}"><b>${esc(a.r==="主管"?"主管":a.n)}${tag?`<small>${tag}</small>`:""}</b><span class="tm">${a.t}</span></div>
+        ${track(`<span class="bar ${RK[a.r]}${a.pi===me?" mine":""}${a.chg?" c-"+a.chg:""}" style="left:${pct(a.s)};width:${wid(a.s,a.e)}">${a.chg==="del"?`<em>請假</em>`:len>=6?`<em>${a.k}班 ${len}h</em>`:`<em>${len}h</em>`}</span>`)}`;
+    }
+  }
+  h+=`</div></div>`;
+  return h;
+}
+function nextCard(pi,eff){
+  const now=new Date(),tmd=now.getMonth()===10?1100+now.getDate():(now.getMonth()>10?1200:1100),hr=now.getHours()+now.getMinutes()/60;
+  const list=[...eff].sort((x,y)=>x.md-y.md||x.s-y.s).filter(a=>a.md>tmd||(a.md===tmd&&(a.e>a.s?a.e:a.e+24)>hr));
+  const wk=weekOf(tmd>1100&&tmd<1200?tmd:1101),wkN=eff.filter(a=>weekOf(a.md)===wk).length;
+  const f=a=>`${fmtMd(a.md)}（${WD[DAY_BY_MD[a.md].w]}）`;
+  let h=`<div class="nextcard"><div class="lbl">你的下一班</div>`;
+  if(!list.length)h+=`<div class="big">11 月沒有班了</div>`;
+  else{const a=list[0];h+=`<div class="big">${f(a)} <span class="tm">${a.t}</span>${a.md===tmd?"<small>今天</small>":a.md===tmd+1?"<small>明天</small>":""}</div>`;
+    if(list.length>1)h+=`<div class="more">接著：${list.slice(1,3).map(x=>`${f(x)} ${x.t}`).join("　")}</div>`;}
+  h+=`<div class="stats"><span>本週 <b>${wkN}</b> 天</span><span>11 月 <b>${eff.length}</b> 班</span><span>剩 <b>${list.length}</b> 班</span></div></div>`;
+  return h;}
+/* ---------- 我的班（日曆） ---------- */
+function renderMe(target,merged){
+  const main=target||$("main");
+  if(me===null){$("meter").hidden=true;$("stChip").innerHTML="";
+    main.innerHTML=`<button class="back" data-go="all">← 回總班表</button><div class="empty">先在上方選你的名字，就會用日曆列出主管幫你預排的班。<br>預設全部「可以」，不能上的那天點下去改「不能」，再補選別天。</div>`;return;}
+  if(draftFor!==me||(!dirty&&stampOf(me)!==draftStamp))loadDraft(me);
+  for(const id of [...draft.decline])if(!ASSIGN[id])draft.decline.delete(id);
+  const P=PEOPLE[me];
+  const off=officialOf(me),picks=[...draft.pick.values()];
+  const eff=effective(me,draft.decline,picks);
+  const diff=P.up-eff.length;
+  const meter=$("meter");meter.hidden=false;
+  meter.innerHTML=`<div><span>應上</span><b>${P.up}</b></div><div><span>目前</span><b>${eff.length}</b></div>
+   <div class="${diff>0?"short":diff<0?"over":"even"}"><span>${diff>0?"還少":diff<0?"多出":"剛好"}</span><b>${diff>0?diff:diff<0?-diff:"✓"}</b></div>`;
+  $("stChip").innerHTML=isOwner?"":statusChip(me);
+  const r=REQ["p"+me];
+  const role=P.r==="兼職"?"兼職":"正職";
+  const needPick=draft.decline.size>0||diff>0||draft.pick.size>0;
+  const slots=choices(me);
+  const slotsBy={};for(const s of slots)if(!draft.pick.has(s.key))(slotsBy[s.md]=slotsBy[s.md]||[]).push(s);
+  const offBy={};off.forEach(a=>offBy[a.md]=a);
+  const pickBy={};picks.forEach(p=>pickBy[p.md]=p);
+  let h=`<button class="back" data-go="all">← 回總班表</button>`;
+  const dl=r&&(r.done||[]).length?`<br>已核准：${r.done.map(esc).join("、")}`:"";
+  const rl=r&&(r.rej||[]).length?`<br>被退回：${r.rej.map(esc).join("、")}`:"";
+  if(r&&r.status==="rejected")h+=`<div class="banner warn">主管審核完了，有變更被退回。${rl}${dl}<br>下面是目前的正式班表，可以重新回覆。</div>`;
+  if(r&&r.status==="approved")h+=`<div class="banner">變更都核准了，下面就是你的正式班表。${dl}</div>`;
+  if(r&&r.status==="pending")h+=`<div class="banner warn">已送出，等主管審核中。還可以修改後重送。${dl}${rl}</div>`;
+  const chg=isOwner?[]:chgOf(me);
+  if(chg.length)h+=`<div class="banner warn"><b>主管調整了你的班，請確認：</b>${chg.map(x=>`<br>${fmtMd(x.md)}（${WD[DAY_BY_MD[x.md].w]}） <span class="tm">${x.from}</span> → <span class="tm">${x.to}</span>`).join("")}<br>可以配合就按最下面「同意異動，送出確認」；不行的話點那天改「不能」再送出。</div>`;
+  h+=`<div class="legend"><span><i class="sw ok"></i>可以</span><span><i class="sw no"></i>不能</span><span><i class="sw pk"></i>補選</span>${needPick?`<span><i class="sw op"></i>可選班</span>`:""}</div>`;
+  let ph="";
+  if(selMe!==null&&DAY_BY_MD[selMe]){
+
+    const day=DAY_BY_MD[selMe],a=offBy[selMe],p=pickBy[selMe];
+    ph+=merged?`<div class="mybox"><div class="k">你的班</div><div class="list">`:`<div class="dhead"><h2>${fmtMd(selMe)}（週${WD[day.w]}）</h2><button class="x" data-day="${selMe}" aria-label="收合">收合 ▲</button></div><div class="list">`;
+    if(a){const no=draft.decline.has(a.id);
+      ph+=`<div class="shift${no?" declined":""}"><div class="info"><div class="k">${a.k}班｜主管預排</div><div class="tm">${a.t}</div></div>
+        <div class="seg"><button data-ok="${a.id}" class="${no?"":"on-ok"}" aria-pressed="${!no}">可以</button><button data-no="${a.id}" class="${no?"on-no":""}" aria-pressed="${no}">不能</button></div></div>`;}
+    if(p)ph+=`<div class="shift picked"><div class="info"><div class="k">${p.k}班｜補選</div><div class="tm">${p.t}</div></div><button class="btn" data-unpick="${esc(p.key)}">取消</button></div>`;
+    const others={};for(const [k,q] of Object.entries(REQ))if(k!=="p"+me&&q.status==="pending")(q.pick||[]).forEach(x=>others[x.key]=(others[x.key]||0)+1);
+    const ds=(slotsBy[selMe]||[]).filter(x=>!p&&(!a||(draft.decline.has(a.id)&&x.t!==a.t)));
+    if(ds.length){
+      ph+=`<div class="k" style="margin-top:4px">${a?"這個時段不行的話，可以改上這天其他時段（不改也可以）：":"這天可以排的班："}</div>`;
+      for(const s of ds){const why=pickBlock(me,s,draft.decline,picks);
+        ph+=`<div class="shift"><div class="info"><div class="k">${s.k}班｜${s.open?`<span class="why soft">缺人</span>`:"可加入"}${others[s.key]?`｜<span class="why soft">${others[s.key]} 人申請中</span>`:""}</div><div class="tm">${s.t}</div>${why?`<div class="why">${why}</div>`:""}</div>
+          <button class="btn${why?"":" pri"}" data-pick="${esc(s.key)}" ${why?"disabled":""}>選這班</button></div>`;}
+    }
+    if(!a&&!p&&!ds.length)ph+=merged?`<div class="note" style="margin:0">你這天休。</div>`:`<div class="empty">這天沒有可選的${role}班。</div>`;
+    ph+=`</div>`;
+    if(P.r==="兼職"&&ds.length)ph+=`<p class="note">只選你可以上的時段，主管核准時會再對一次。</p>`;
+    if(merged)ph+=`</div>`;
+  }
+
+  if(diff>0)h+=`<div class="banner warn" id="gap"><b>還少 ${diff} 班</b>：點紅色日期可以改上同一天的其他時段，或點<b>虛線框（可選）</b>的日期補班。</div>`;
+  let cells=null;
+  if(merged){cells={};for(const d of DAYS){const md=d.md,a=offBy[md],p=pickBy[md];
+    if(a&&!draft.decline.has(a.id))cells[md]="ok";else if(p)cells[md]="pk";else if(a)cells[md]="no";
+    else if(needPick&&slotsBy[md]&&slotsBy[md].some(s=>!pickBlock(me,s,draft.decline,picks)))cells[md]="op";}
+    h=h.replace(`<button class="back" data-go="all">← 回總班表</button>`,"");
+    const legendAt=h.indexOf('<div class="legend">');if(legendAt>=0)h=h.slice(0,legendAt)+h.slice(h.indexOf("</div>",legendAt)+6);
+    h=nextCard(me,eff)+h;}
+  h+=merged?"":`<div class="cal">${calHead()}`;
+  if(!merged)
+  calCells().forEach((d,i,arr)=>{
+    const md=1100+d,day=DAY_BY_MD[md];
+    if(!day)h+=`<div class="cell out"><div class="dn">${d>0?d:d+31}</div></div>`;else{
+    const we=day.w===0||day.w===6;const a=offBy[md],p=pickBy[md];
+    let cls="",body="";
+    if(a&&!draft.decline.has(a.id)){cls="ok";body=`<b>${a.k}</b>${tm2(a.t)}`;}
+    else if(p){cls="pk";body=`<b>補${p.k}</b>${tm2(p.t)}`;}
+    else if(a){cls="no";const alt=(slotsBy[md]||[]).some(s=>s.t!==a.t&&!pickBlock(me,s,draft.decline,picks));body=`<b>不能</b>${tm2(a.t)}${alt?`<span class="alt">可改時段</span>`:""}`;}
+    else if(needPick&&slotsBy[md]){const n=slotsBy[md].filter(s=>!pickBlock(me,s,draft.decline,picks)).length;
+      cls=n?"op":"";body=n?`<b>${n}</b><span>可選</span>`:`<span class="off">休</span>`;}
+    else body=`<span class="off">休</span>`;
+    h+=`<button class="cell mine-cal ${cls}${selMe===md?" sel":""}" data-day="${md}" aria-expanded="${selMe===md}"><div class="dn${we?" we":""}">${d}</div><div class="sb">${body}</div></button>`;}
+    if((i%7===6||i===arr.length-1)&&ph&&Math.floor((selMe-1095)/7)===Math.floor(i/7))h+=`<div class="expand" id="dayme">${ph}</div>`;
+  });
+  if(!merged){h+=`</div>`;
+  if(!ph)h+=`<p class="note">點日曆上的日期會在那一週下面展開，可以改「不能」或補選那天的班。</p>`;}
+  const top=h;if(merged)h="";
+  const c=checks(eff);
+  if(c.hard.length||c.soft.length)h+=`<div class="banner warn">${[...c.hard,...c.soft].map(esc).join("<br>")}</div>`;
+  h+=`<h2>備註（選填）</h2><textarea id="note" placeholder="例如：11/14 下午有課，晚上可以">${esc(draft.note)}</textarea>`;
+  const changes=draft.decline.size+draft.pick.size;
+  const done=r&&r.status==="confirmed"&&changes===0&&!dirty&&!chg.length;
+  let label,msg,dis=false;
+  if(changes===0&&chg.length){label="同意異動，送出確認";dis=sending;msg=`主管調整了 ${chg.length} 天（見最上面），可以配合就按這裡。`;}
+  else if(changes===0){label=done?"已確認 ✓":"全部可以，送出確認";dis=done||sending;msg=done?"你已確認全部可以配合。之後要改，點日期改「不能」再送出。":"主管預排的班你都可以上的話，按這裡送出。";}
+  else{label="送出變更（等主管核准）";dis=c.hard.length>0||sending;msg=c.hard.length?"有班別衝突，先調整再送出。":`不能 ${draft.decline.size} 班、改選 ${draft.pick.size} 班${diff>0?`，還少 ${diff} 班`:""}。`;}
+  if(isOwner){const iss=ownerIssues(eff,c);
+    msg=changes===0?"點日期可以請假、改時段或補班；改完在這裡檢查並套用。":iss.length?"還不能套用：\n"+iss.join("\n"):`檢查通過：不能 ${draft.decline.size} 班、改選 ${draft.pick.size} 班${diff>0?`，還少 ${diff} 班`:diff<0?`，多 ${-diff} 班`:""}。按下去直接改正式班表。`;
+    h+=`<div class="sendbox">${flashHtml()}<div class="msg" style="white-space:pre-line">${esc(msg)}</div><div class="acts">
+    <button class="btn ok" data-oapply="1" ${changes===0||iss.length||sending?"disabled":""}>${sending?"套用中…":"同意，直接改正式班表"}</button>
+    ${changes?`<button class="btn" data-reset="1">取消變更</button>`:""}
+    ${merged?"":`<button class="btn" data-go="all">← 回總班表</button>`}</div></div>`;if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick});return;}main.innerHTML=h;return;}
+  h+=`<div class="sendbox">${flashHtml()}<div class="msg">${esc(msg)}</div><div class="acts">
+    <button class="btn pri" data-submit="1" ${dis?"disabled":""}>${sending?"送出中…":label}</button>
+    ${changes?`<button class="btn" data-reset="1">取消變更</button>`:""}
+    ${merged?"":`<button class="btn" data-go="all">← 回總班表</button>`}</div></div>`;
+  if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick});return;}
+  main.innerHTML=h;
+}
+function showPanel(id){const p=$(id||"dayp");if(!p)return;const r=p.getBoundingClientRect();
+  if(r.bottom>window.innerHeight-70){const sm=matchMedia("(prefers-reduced-motion: reduce)").matches;p.scrollIntoView({behavior:sm?"auto":"smooth",block:r.height>window.innerHeight-200?"start":"end"});}}
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.allday){const md=+t.dataset.allday;selAll=selAll===md?null:md;if(view==="all"&&!isViewer&&me!==null)selMe=selAll;render();if(selAll)showPanel();}
+  else if(t.dataset.day){const md=+t.dataset.day;selMe=selMe===md?null:md;render();if(selMe)showPanel("dayme");}
+  else if(t.dataset.ok){draft.decline.delete(t.dataset.ok);dirty=true;render();}
+  else if(t.dataset.no){draft.decline.add(t.dataset.no);dirty=true;selMe=null;render();const g=$("gap");if(g)g.scrollIntoView({block:"nearest"});}
+  else if(t.dataset.pick){const s=choices(me).find(x=>x.key===t.dataset.pick);if(s){draft.pick.set(s.key,s);dirty=true;selMe=null;render();}}
+  else if(t.dataset.unpick){draft.pick.delete(t.dataset.unpick);dirty=true;render();}
+  else if(t.dataset.submit)submit();
+  else if(t.dataset.oapply)ownerApply();
+  else if(t.dataset.reset){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;render();}
+  else if(t.dataset.go)setView(t.dataset.go);
+  else if(t.dataset.rper){const pi=+t.dataset.rper;rper=rper===pi?null:pi;rday=null;render();}
+  else if(t.dataset.rday){rday=+t.dataset.rday;render();}
+  else if(t.dataset.iok)decide([t.dataset.iok],true);
+  else if(t.dataset.ino)decide([t.dataset.ino],false);
+  else if(t.dataset.dayok)decide(pendingItems().filter(x=>x.pi===rper&&x.md===+t.dataset.dayok).map(x=>x.id),true);
+  else if(t.dataset.dayno)decide(pendingItems().filter(x=>x.pi===rper&&x.md===+t.dataset.dayno).map(x=>x.id),false);
+  else if(t.dataset.perok)decide(pendingItems().filter(x=>x.pi===+t.dataset.perok).map(x=>x.id),true);
+  else if(t.dataset.perno)decide(pendingItems().filter(x=>x.pi===+t.dataset.perno).map(x=>x.id),false);
+});
+document.addEventListener("input",e=>{if(e.target.id==="note"){draft.note=e.target.value;dirty=true;}
+  if(e.target.id&&e.target.id.startsWith("reply-"))replies[e.target.id.slice(6)]=e.target.value;});
+
+/* ---------- 主管自己調班：檢查通過就直接改正式班表 ---------- */
+function ownerIssues(eff,c){
+  const days=new Set([...[...draft.decline].map(id=>ASSIGN[id]&&ASSIGN[id].md).filter(Boolean),...[...draft.pick.values()].map(p=>p.md)]);
+  // 之前已接受的超量（某週 >5 天、連上 7 天）不擋；只擋這次改動造成的新問題或更嚴重
+  const pre=checks(effective(0,new Set(),[])).soft,wk=m=>{const mm=m.match(/^11\/(\d+) 那週排 (\d+) 天/);return mm?[+mm[1],+mm[2]]:null;};
+  const preWk={};pre.forEach(m=>{const x=wk(m);if(x)preWk[x[0]]=x[1];});
+  const out=[...c.hard,...c.soft.filter(m=>{const x=wk(m);return x?x[1]>(preWk[x[0]]||5):!pre.includes(m);})];
+  for(const md of [...days].sort()){
+    const list=Object.entries(ASSIGN).filter(([id,a])=>a.md===md&&!draft.decline.has(id)).map(([,a])=>a);
+    for(const p of draft.pick.values())if(p.md===md)list.push({md,pi:0,r:"主管",s:p.s,e:p.e,t:p.t});
+    for(const x of dayIssues(md,list))out.push(`${fmtMd(md)}（${WD[DAY_BY_MD[md].w]}）${x}`);
+  }
+  return out;
+}
+async function ownerApply(){
+  if(sending||!isOwner)return;
+  const eff=effective(0,draft.decline,[...draft.pick.values()]);const iss=ownerIssues(eff,checks(eff));
+  if(iss.length){toast("還有問題沒解決，不能套用","err");return;}
+  const decl=[...draft.decline],picks=[...draft.pick.values()];
+  sending=true;toast("套用中…","busy");
+  try{await mutate(pl=>{for(const id of decl)delete pl.assign[id];
+      for(const p of picks)pl.assign[`${p.md}-0`]={md:p.md,pi:0,n:PEOPLE[0].n,r:"主管",t:p.t,k:p.s<=12.5?"早":(p.e>=23?"晚":"中"),s:p.s,e:p.e};
+      pushVersion(pl,"主管自調");});
+    sending=false;draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;toast("已改好正式班表，也存了一版「主管自調」");}
+  catch(e){sending=false;toast(e&&e.msg||("套用失敗："+(e&&e.code||"請再試一次")),"err");}
+}
+let sending=false;
+async function submit(){
+  if(me===null||sending)return;
+  const changes=draft.decline.size+draft.pick.size;
+  const data={n:PEOPLE[me].n,pi:me,decline:[...draft.decline],pick:[...draft.pick.values()],note:draft.note||"",
+    status:changes?"pending":"confirmed",at:Date.now()};
+  {const old=REQ["p"+me];if(!changes)data.seen=seenOf(me);else if(old&&old.seen)data.seen=old.seen;}
+  sending=true;toast("送出中…","busy");
+  const timeout=new Promise((_,rej)=>setTimeout(()=>rej({code:"timeout"}),12000));
+  try{await Promise.race([db.doc("req/p"+me).set(data),timeout]);sending=false;dirty=false;
+    toast(changes?"已送出 ✓ 等主管核准。可以按「回總班表」離開。":"已確認 ✓ 謝謝！可以按「回總班表」離開。","ok");}
+  catch(err){sending=false;const code=err&&err.code;
+    toast(err&&err.msg?err.msg:code==="timeout"?"送不出去：伺服器沒有回應，請檢查網路後再按一次。":`送不出去（${code||"未知錯誤"}），請再按一次。`,"err");}
+}
+
+/* ---------- 管理檢視：逐日審核 ---------- */
+const replies={};
+let names={},rday=null,rper=null,busyAdmin=false;
+function pendingItems(){
+  const out=[];
+  for(const [k,r] of Object.entries(REQ)){
+    if(r.status!=="pending")continue;const pi=r.pi;
+    for(const id of r.decline||[]){const a=ASSIGN[id];if(a)out.push({id:`${k}~no~${id}`,k,pi,n:r.n,role:PEOPLE[pi].r,type:"no",md:a.md,t:a.t,kk:a.k,s:a.s,e:a.e,ref:id,note:r.note||""});}
+    for(const s of r.pick||[])out.push({id:`${k}~pk~${s.key}`,k,pi,n:r.n,role:PEOPLE[pi].r,type:"pk",md:s.md,t:s.t,kk:s.k,s:s.s,e:s.e,ref:s.key,open:s.open,note:r.note||""});
+  }
+  return out.sort((a,b)=>a.md-b.md||ROLE_ORD[a.role]-ROLE_ORD[b.role]||a.s-b.s);
+}
+function dayList(md,items){ // 調整後（含刪除線）的當天名單
+  const del=new Set(items.filter(x=>x.type==="no").map(x=>x.ref));
+  const list=Object.entries(ASSIGN).filter(([,a])=>a.md===md).map(([id,a])=>({...a,chg:del.has(id)?"del":""}));
+  for(const x of items)if(x.type==="pk")list.push({md,pi:x.pi,n:x.n,r:x.role,t:x.t,k:x.kk,s:x.s,e:x.e,chg:"add"});
+  return list.sort((x,y)=>ROLE_ORD[x.r]-ROLE_ORD[y.r]||x.s-y.s||x.pi-y.pi);
+}
+function dayIssues(md,list){ // 營業時段沒有正職、尖峰正職不多於兼職
+  const op=OPEN[DAY_BY_MD[md].type],gap=[],pk=[];if(op.train)return [];
+  for(let t=op.o[0];t<op.o[1];t+=0.5){
+    const on=list.filter(a=>a.s<=t&&a.e>t);const ft=on.filter(a=>a.r!=="兼職").length,pt=on.length-ft;
+    if(!ft)gap.push(t);
+    if(op.pk.some(([a,b])=>t>=a&&t<b)&&ft<=pt)pk.push(t);
+  }
+  const rng=ts=>{const out=[];let st=null,pv=null;for(const t of ts){if(st===null){st=t;}else if(t!==pv+0.5){out.push([st,pv+0.5]);st=t;}pv=t;}if(st!==null)out.push([st,pv+0.5]);
+    return out.map(([a,b])=>`${hl(a)}:${a%1?"30":"00"}-${hl(b)}:${b%1?"30":"00"}`).join("、");};
+  const res=[];if(gap.length)res.push(`沒有主管或正職在班：${rng(gap)}`);
+  return res;
+}
+function personCal(pi,items){
+  const P=PEOPLE[pi];
+  const mine=items.filter(x=>x.pi===pi);
+  const decl=new Set(mine.filter(x=>x.type==="no").map(x=>x.ref));
+  const picks=mine.filter(x=>x.type==="pk").map(x=>({md:x.md,t:x.t,k:x.kk,s:x.s,e:x.e,key:x.ref}));
+  const off=officialOf(pi),eff=effective(pi,decl,picks),c=checks(eff);
+  const offBy={};off.forEach(a=>offBy[a.md]=a);const pickBy={};picks.forEach(p=>pickBy[p.md]=p);
+  let h=`<div class="pcal"><div class="row" style="justify-content:space-between"><b>${esc(P.n)} 核准後的 11 月</b><span class="chip ${eff.length<P.up?"no":eff.length>P.up?"wait":"ok"}">應上 ${P.up}｜現在 ${off.length} → 核准後 ${eff.length}</span></div><div class="cal">${calHead()}`;
+  for(const d of calCells()){
+    const md=1100+d,day=DAY_BY_MD[md];
+    if(!day){h+=`<div class="cell out"><div class="dn">${d>0?d:d+31}</div></div>`;continue;}
+    const a=offBy[md],p=pickBy[md];let cls="",body=`<span class="off">休</span>`;
+    if(a&&!decl.has(a.id)){cls="ok";body=`<b>${a.k}</b>${tm2(a.t)}`;}
+    else if(p){cls="pk";body=`<b>補${p.k}</b>${tm2(p.t)}`;}
+    else if(a){cls="no";body=`<b>不能</b>${tm2(a.t)}`;}
+    h+=`<div class="cell mine-cal ${cls}" style="cursor:default"><div class="dn${day.w===0||day.w===6?" we":""}">${d}</div><div class="sb">${body}</div></div>`;
+  }
+  h+=`</div>${c.hard.length||c.soft.length?`<div class="why" style="margin-top:6px">${[...c.hard,...c.soft].map(esc).join("<br>")}</div>`:`<div class="note" style="margin:6px 0 0">勞基法檢查：間隔 11 小時、每週 5 天、連上 6 天都沒問題。</div>`}</div>`;
+  return h;
+}
+async function renderAdmin(){
+  $("meter").hidden=true;$("stChip").innerHTML="";
+  const main=$("main");
+  if(isViewer){const staff=PEOPLE.filter(p=>p.r!=="主管"&&!p.gone);const items=pendingItems();
+    let v=`<p class="note">你是「只能看」的身分：可以看班表和大家的回覆狀態，不能改班、不能核准。</p><h2>全員狀態</h2><div class="ppl">`;
+    for(const p of staff){const n=officialOf(p.i).length;v+=`<div>${esc(p.n)}<span class="role">${p.r}</span></div><div class="num">${n}/${p.up}</div><div>${statusChip(p.i)}</div>`;}
+    v+=`</div><p class="note">待主管審核的變更：${items.length} 件。</p>`;main.innerHTML=v;return;}
+  if(!isOwner){main.innerHTML=`<div class="empty">只有主管可以看這頁。</div>`;return;}
+  const staff=PEOPLE.filter(p=>p.r!=="主管"&&!p.gone);
+  const cnt={none:0,confirmed:0,pending:0,approved:0,rejected:0,changed:0};
+  staff.forEach(p=>{const r=REQ["p"+p.i];const st=chgOf(p.i).length?"changed":r?r.status:"none";cnt[st]=(cnt[st]||0)+1;});
+  const items=pendingItems();
+  const ppl=[...new Set(items.map(x=>x.pi))].sort((x,y)=>ROLE_ORD[PEOPLE[x].r]-ROLE_ORD[PEOPLE[y].r]||x-y);
+  if(rper!==null&&!ppl.includes(rper))rper=null;
+  let h=flashHtml()+`<div class="meter" style="margin-top:14px"><div><span>待審變更</span><b style="color:var(--warn)">${items.length}</b></div><div><span>已確認／核准</span><b>${cnt.confirmed+cnt.approved}</b></div><div><span>未回覆／異動待確認</span><b>${cnt.none+cnt.rejected+cnt.changed}</b></div></div>`;
+  h+=`<h2>選人審核｜點一個人，先調整他的</h2>`;
+  if(!ppl.length)h+=`<div class="empty">目前沒有要審核的變更。</div>`;
+  else h+=`<div class="dchips">${ppl.map(pi=>{const n=items.filter(x=>x.pi===pi).length;const P=PEOPLE[pi];
+      return `<button class="dchip pchip${pi===rper?" on":""}" data-rper="${pi}" aria-pressed="${pi===rper}"><span>${esc(P.n)}</span><small>${P.r}</small><b>${n} 件</b></button>`;}).join("")}</div>`;
+  if(ppl.length&&rper===null)h+=`<p class="note">點上面的名字開始審核。每個人的變更會套在「目前正式班表」上預覽，先核准的人會先改到班表，後面的人看到的就是改過的狀態。</p>`;
+  if(rper!==null){
+    const P=PEOPLE[rper],mine=items.filter(x=>x.pi===rper);
+    const days=[...new Set(mine.map(x=>x.md))];
+    if(!days.includes(rday))rday=days[0];
+    const r=REQ["p"+rper];
+    h+=`<div class="card review"><h3>${esc(P.n)}<span class="chip">${P.r}</span><span class="chip">${mine.length} 件待審</span></h3>
+      ${r&&r.note?`<div class="note" style="margin:0">備註：${esc(r.note)}</div>`:""}
+      ${personCal(rper,items)}
+      <div class="sub">他變動的日子：</div>
+      <div class="dchips">${days.map(md=>{const n=mine.filter(x=>x.md===md).length;return `<button class="dchip${md===rday?" on":""}" data-rday="${md}" aria-pressed="${md===rday}">${fmtMd(md)}<small>週${WD[DAY_BY_MD[md].w]}</small><b>${n}</b></button>`;}).join("")}</div>`;
+    const its=mine.filter(x=>x.md===rday);
+    const before=Object.values(ASSIGN).filter(a=>a.md===rday);
+    const after=dayList(rday,its);const live=after.filter(a=>a.chg!=="del");
+    const iss=dayIssues(rday,live),issB=dayIssues(rday,before);
+    const others=items.filter(x=>x.md===rday&&x.pi!==rper);
+    h+=`<div class="dayrev"><h3 style="font-size:15px">${fmtMd(rday)}（週${WD[DAY_BY_MD[rday].w]}）<span class="chip ${live.length<before.length?"no":live.length>before.length?"pick":"ok"}">上班 ${before.length} → ${live.length} 人</span></h3>`;
+    h+=iss.length?`<div class="banner warn" style="margin:0"><b>核准後：</b><br>${iss.map(esc).join("<br>")}${issB.length?`<br><span class="note">（調整前就有：${issB.map(esc).join("；")}）</span>`:""}</div>`
+      :`<div class="flash ok">核准後：每個營業時段都有主管或正職。</div>`;
+    for(const x of its){
+      h+=`<div class="ritem"><div class="rinfo"><span class="chip ${x.type==="no"?"no":"pick"}">${x.type==="no"?"不能":"補選"}</span> <span class="tm">${x.t}</span> ${x.kk}班${x.type==="pk"?` <span class="chip">${x.open?"補缺人":"加派"}</span>`:""}</div>
+        </div>`;
+    }
+    if(others.length)h+=`<p class="note" style="margin:6px 0 0">這天還有別人待審（還沒算進上面的預覽）：${others.map(x=>`${esc(x.n)} ${x.type==="no"?"不能":"補選"} ${x.t}`).join("、")}</p>`;
+    h+=`<div class="sub">核准後的當天時間軸（灰色斜線＝請假、綠框＝新加入）</div>${tlPanel(rday,{[rday]:after},{review:true})}</div>`;
+    h+=`<input id="reply-r${rper}" placeholder="退回原因（選填，會給${esc(P.n)}看）" value="${esc(replies["r"+rper]||"")}" class="reply">
+      <div class="acts"><button class="btn no" data-dayno="${rday}" ${busyAdmin?"disabled":""}>${fmtMd(rday)} 退回</button><button class="btn ok" data-dayok="${rday}" ${busyAdmin?"disabled":""}>${fmtMd(rday)} 核准</button></div>
+      ${days.length>1?`<div class="acts"><button class="btn no" data-perno="${rper}" ${busyAdmin?"disabled":""}>他 ${days.length} 天全部退回</button><button class="btn ok" data-perok="${rper}" ${busyAdmin?"disabled":""}>他 ${days.length} 天全部核准（${mine.length} 件）</button></div>`:""}</div>`;
+  }
+  h+=adminExtras();
+  h+=`<h2>全員狀態</h2><div class="ppl">`;
+  for(const p of staff){const n=officialOf(p.i).length;
+    h+=`<div>${esc(p.n)}<span class="role">${p.r}</span></div><div class="num">${n}/${p.up}</div><div>${statusChip(p.i)}</div>`;}
+  h+=`</div>`;
+  main.innerHTML=h;
+}
+async function decide(ids,ok){
+  if(busyAdmin)return;
+  const items=pendingItems().filter(x=>ids.includes(x.id));if(!items.length)return;
+  const reply=replies["r"+items[0].pi]||"";
+  busyAdmin=true;toast(ok?"核准中…":"退回中…","busy");
+  const byReq={};items.forEach(x=>(byReq[x.k]=byReq[x.k]||[]).push(x));
+  let fail=[];
+  try{
+    for(const [k,xs] of Object.entries(byReq)){
+      const r=REQ[k];let decline=[...(r.decline||[])],pick=[...(r.pick||[])],done=[...(r.done||[])],rej=[...(r.rej||[])];
+      for(const x of xs){
+        const desc=`${fmtMd(x.md)} ${x.type==="no"?"不能":"補選"} ${x.t}`;
+        if(ok){
+          if(x.type==="no"){if(ASSIGN[x.ref])await db.doc("assign/"+x.ref).delete();}
+          else{const id=`${x.md}-${x.pi}`;if(ASSIGN[id]&&!items.some(y=>y.type==="no"&&y.ref===id)&&!(r.decline||[]).includes(id)){fail.push(`${x.n} ${desc}（那天已有班）`);continue;}
+            if(ASSIGN[id])await db.doc("assign/"+id).delete();
+            await db.doc("assign/"+id).set({md:x.md,pi:x.pi,n:x.n,r:x.role,t:x.t,k:x.kk,s:x.s,e:x.e});}
+          done.push(desc);
+        }else rej.push(desc+(reply?`（${reply}）`:""));
+        if(x.type==="no")decline=decline.filter(id=>id!==x.ref);else pick=pick.filter(s=>s.key!==x.ref);
+      }
+      const left=decline.filter(id=>ASSIGN[id]).length+pick.length;
+      const upd={decline,pick,done,rej,decidedAt:Date.now()};
+      if(!left){upd.status=rej.length?"rejected":"approved";if(rej.length)upd.reply=reply;upd.seen=seenOf(+k.slice(1));}
+      await db.doc("req/"+k).update(upd);
+    }
+    if(ok&&items.length>fail.length){const who=[...new Set(items.map(x=>x.n))].join("、");try{await mutate(pl=>pushVersion(pl,`核准 ${who}`));}catch(e){}}
+    busyAdmin=false;toast(fail.length?`部分沒處理：${fail.join("；")}`:ok?`已核准 ${items.length} 項`:`已退回 ${items.length} 項`,fail.length?"err":"ok");
+  }catch(e){busyAdmin=false;toast(e&&e.msg||("處理失敗："+(e&&e.code||"請再試一次")),"err");}
+}
+
+/* ---------- 共用 ---------- */
+function render(){try{render0();}catch(err){$("main").innerHTML=`<div class="banner warn">畫面出錯了：${esc(err&&err.message||err)}<br><button class="back" data-go="all">← 回總班表</button></div>`;}}
+function render0(){
+  if(!DK||loginState){renderLogin();return;}
+  if(storeErr){$("main").innerHTML=`<div class="banner warn">班表資料讀不到（${esc(storeErr)}）。${isOwner?"可以在下面還原到最近一次備份。":"請通知主管處理。"}</div>${isOwner?adminExtras():""}`;return;}
+  if(!loaded.a||!loaded.r)return;
+  { const rb=document.getElementById("robanner"); if(readOnly&&!rb){const d=document.createElement("div");d.id="robanner";d.className="banner warn";d.style.margin="10px 0 0";d.textContent="班表伺服器暫時連不上，現在顯示的是備份，只能看、不能送出或核准。";document.querySelector("header.top .in").appendChild(d);} else if(!readOnly&&rb) rb.remove(); }
+  $("whoRow").hidden=false;$("whoName").textContent=isOwner?"主管（管理者）":isViewer?"其他主管（只能看）":(PEOPLE[me]?`${PEOPLE[me].n}（${PEOPLE[me].r}）`:"");
+  if(!Object.keys(ASSIGN).length&&view!=="admin"){$("main").innerHTML=`<div class="empty">班表還沒放上來，請稍後再開。</div>`;return;}
+  $("whoRow").hidden=view==="admin";
+  if(view==="admin")renderAdmin();
+  else if(isViewer||me===null)renderAll();
+  else{ // 總班表＋我的班同一頁：上面總班表、下面我的班
+    if(selMe!==selAll){if(selMe===null)selAll=null;else selAll=selMe;} // 我的班動作關閉／切換面板時同步
+    renderMe($("main"),true);
+  }
+}
+function setTabs(v){view=v;["All","Me","Admin"].forEach(n=>$("tab"+n).setAttribute("aria-pressed",v===n.toLowerCase()));}
+function setView(v){setTabs(v);window.scrollTo(0,0);render();}
+/* ---------- 加密（密碼 → 解開資料鑰匙） ---------- */
+const ITER=150000,te=new TextEncoder(),td=new TextDecoder();
+function b64(buf){const u=new Uint8Array(buf);let s="";for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s);}
+const ub64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function kek(pin,salt){const base=await crypto.subtle.importKey("raw",te.encode(String(pin)),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt:ub64(salt),iterations:ITER,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);}
+async function aesEnc(key,bytes){const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,bytes);return {iv:b64(iv),ct:b64(ct)};}
+async function aesDec(key,o){return new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv:ub64(o.iv)},key,ub64(o.ct)));}
+async function wrapKey(pin,raw){const s=b64(crypto.getRandomValues(new Uint8Array(16)));return {s,...await aesEnc(await kek(pin,s),raw)};}
+async function unwrapKey(pin,w){if(!w)return null;try{return await aesDec(await kek(pin,w.s),w);}catch(e){return null;}}
+async function importDK(raw){return crypto.subtle.importKey("raw",raw,"AES-GCM",false,["encrypt","decrypt"]);}
+
+/* ---------- 資料存放（加密後放在網路存放處） ---------- */
+const FS_PROJECT="star-9f",FS_KEY="AIzaSyDP_bOCn7eLWzWeK0_Yzsv7RxPsBtfzluI";
+const API=`https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents/shift/main?key=${FS_KEY}`;
+async function putJson(obj){const w=await fetch(API,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({fields:{blob:{stringValue:JSON.stringify(obj)}}})});if(!w.ok)throw{code:"連線 "+w.status};}
+let DK=null,DKraw=null,PINSET={},lastLoad=0,loginState=null; // loginState: {matches:[pi], pin}
+function applyPayload(p){VERS=p.versions||[];PEOPLE=(p.people||[]).map(([n,r,up,from,gone],i)=>({n,r,up,i,from,gone:!!gone}));ASSIGN=p.assign||{};REQ=p.req||{};PINSET=p.pinSet||{};
+  loaded.a=loaded.r=true;lastLoad=Date.now();render();}
+let readOnly=false;
+async function getJson(){let r=null;try{r=await fetch(API,{cache:"no-store",headers:{Accept:"application/json"}});}catch(e){}
+  if(r&&r.ok){readOnly=false;const d=await r.json();return JSON.parse(d.fields.blob.stringValue);}
+  // 存放處連不上（例如本月連線次數用完）：改讀網站上的備份，只能看不能改
+  const b=await fetch("backup/latest.json?t="+Date.now(),{cache:"no-store"});if(!b.ok)throw{code:"連線 "+(r?r.status:"失敗"),msg:"連不上班表資料，請稍後再試"};
+  readOnly=true;return b.json();}
+async function decPayload(j){if(!j||!j.data)throw{code:"資料不見了"};try{return JSON.parse(td.decode(await aesDec(DK,j.data)));}catch(e){throw{code:"資料打不開"};}}
+function keepGood(j){try{localStorage.setItem("lastgood",JSON.stringify(j));}catch(e){}}
+async function pull(){if(!DK)return;try{const j=await getJson();applyPayload(await decPayload(j));keepGood(j);storeErr=null;}catch(e){storeErr=e&&(e.msg||e.code)||"錯誤";render();throw e;}}
+let storeErr=null,storeBroken=false,q=Promise.resolve();
+function mutate(fn){ // 讀最新 → 解密 → 改 → 加密 → 寫回（一次一個）
+  const p=q.then(async()=>{const j=await getJson();if(readOnly)throw{code:"唯讀",msg:"班表暫時只能看、不能改，請稍後再試或通知主管"};const pl=await decPayload(j);await fn(pl,j);
+    j.data=await aesEnc(DK,te.encode(JSON.stringify(pl)));j.at=Date.now();
+    await putJson(j);const w={ok:true};
+    if(!w.ok)throw{code:"連線 "+w.status};keepGood(j);applyPayload(pl);});
+  q=p.catch(()=>{});return p;}
+const db={doc:path=>{const [c,id]=path.split("/");return{
+  set:d=>mutate(p=>{(p[c]=p[c]||{})[id]=d;}),
+  update:d=>mutate(p=>{(p[c]=p[c]||{})[id]={...((p[c]||{})[id]||{}),...d};}),
+  delete:()=>mutate(p=>{if(p[c])delete p[c][id];})};}};
+
+/* ---------- 登入（主管密碼／員工密碼） ---------- */
+async function login(pin){
+  pin=String(pin||"").trim();if([...pin].length!==4)return "密碼是 4 個字";
+  let j;try{j=await getJson();}catch(e){return e&&e.msg||"連不上班表資料，請檢查網路";}
+  if(!j||!j.wraps||!j.data||!j.wraps.admin){storeBroken=true;return "班表資料被破壞了，請按下方「還原備份」";}
+  storeBroken=false;
+  const ws=j.wraps;
+  const a=await unwrapKey(pin,ws.admin);
+  if(a){keepGood(j);DKraw=a;DK=await importDK(a);isOwner=true;me=PEOPLE.length?0:0;lsSet("pin",pin);lsSet("who","");
+    try{await loadAdminKey(pin,j);}catch(e){DK=null;DKraw=null;isOwner=false;return "管理資料讀取失敗："+(e&&e.code||e&&e.message||"錯誤");}
+    afterLogin();applyPayload(await decPayload(j));return "";}
+  const vk=await unwrapKey(pin,ws.viewer);
+  if(vk){keepGood(j);DKraw=vk;DK=await importDK(vk);isOwner=false;isViewer=true;me=null;lsSet("pin",pin);lsSet("who","");afterLogin();applyPayload(await decPayload(j));return "";}
+  const keys=Object.keys(ws).filter(k=>/^p\d+$/.test(k));
+  const res=await Promise.all(keys.map(k=>unwrapKey(pin,ws[k])));
+  const matches=keys.filter((k,i)=>res[i]).map(k=>+k.slice(1));
+  if(!matches.length)return "密碼不對";
+  if(matches.length!==1)return "這組密碼暫時不能用，請找主管拿你的新密碼";
+  keepGood(j);DKraw=res.find(Boolean);DK=await importDK(DKraw);isOwner=false;
+  const pl=await decPayload(j);
+  me=matches[0];lsSet("pin",pin);lsSet("who",String(me));afterLogin();applyPayload(pl);return "";
+}
+function pickWho(pi){const s=loginState;if(!s||!s.matches.includes(pi))return;me=pi;lsSet("pin",s.pin);lsSet("who",String(pi));loginState=null;afterLogin();applyPayload(s.pl);}
+function afterLogin(){
+  $("tabs").hidden=!(isOwner||isViewer);$("tabAdmin").hidden=!(isOwner||isViewer);$("tabMe").hidden=true;
+  $("tabAdmin").textContent=isViewer?"全員狀態":"管理";
+  $("whoName").textContent=isOwner?"主管（管理者）":isViewer?"其他主管（只能看）":"";
+  setTabs("all");
+}
+function logout(){lsSet("pin","");lsSet("who","");location.reload();}
+async function setupStore(){
+  const b=document.querySelector("[data-setup]");if(b){b.disabled=true;b.textContent="建立中…";}
+  try{const seed=await (await fetch("seed.enc.json",{cache:"no-store"})).text();
+    const r=await fetch("https://jsonblob.com/api/jsonBlob",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:seed});
+    if(!r.ok)throw{code:"連線 "+r.status};
+    const loc=r.headers.get("Location")||r.headers.get("location")||"";const id=(loc.split("/").pop())||r.headers.get("X-jsonblob")||r.headers.get("x-jsonblob-id")||"";
+    setupId=id||"(讀不到編號)";render();}
+  catch(e){toast("建立失敗："+(e&&e.code||e&&e.message||"錯誤"),"err");}
+}
+let setupId=null;
+function renderLogin(){
+  $("meter").hidden=true;$("tabs").hidden=true;$("whoRow").hidden=true;
+  let h=flashHtml();
+  if(FS_PROJECT.startsWith("__")){
+    h+=`<div class="card" style="margin-top:16px"><h3>第一次使用：建立班表存放處</h3>
+      ${setupId?`<p style="margin:0">建好了，存放處編號：</p><div class="tm" style="font-size:16px;word-break:break-all;user-select:all">${esc(setupId)}</div><p class="note" style="margin:0">把這串編號傳給 Claude，接上之後所有人就能用了。</p>`
+      :`<p class="note" style="margin:0">只需要做一次。按下去會把加密後的班表放到存放處。</p><div class="acts"><button class="btn pri" data-setup="1" style="flex:1;padding:12px">建立班表存放處</button></div>`}</div>`;
+    $("main").innerHTML=h;return;}
+  if(loginState){
+    h+=`<div class="card" style="margin-top:16px"><h3>你是誰？</h3><p class="note" style="margin:0">這組密碼還是預設值，好幾個人共用。點你的名字進去，之後請主管幫你改成自己的密碼。</p>
+      <div class="dchips" style="flex-wrap:wrap">${loginState.matches.map(pi=>{const p=loginState.pl.people[pi];return `<button class="dchip pchip" data-who="${pi}"><span>${esc(p[0])}</span><small>${p[1]}</small></button>`;}).join("")}</div>
+      <div class="acts"><button class="btn" data-relogin="1">← 重新輸入密碼</button></div></div>`;
+  }else{
+    h+=`<div class="card" style="margin-top:16px"><h3>輸入密碼</h3><p class="note" style="margin:0">輸入主管給你的 4 個字密碼。這支手機會記住，下次不用再輸入。</p>
+      <input id="pin" class="reply" type="password" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="4 個字的密碼" style="font-size:22px;letter-spacing:.4em;text-align:center">
+      <div class="acts"><button class="btn pri" data-login="1" style="flex:1;padding:12px">進入</button></div></div>`;
+    if(storeBroken)h+=`<div class="banner warn">班表資料被破壞了。可以還原成這支手機最後一次看到的正常版本（之後的變更會不見）。<div class="acts" style="margin-top:8px"><button class="btn ${restoreArm?"no":""}" data-restore="1">${restoreArm?"確定還原？再按一次":"還原備份"}</button></div></div>`;
+  }
+  $("main").innerHTML=h;
+}
+async function doLogin(){const el=$("pin");const v=el?el.value:"";const b=document.querySelector("[data-login]");if(b){b.disabled=true;b.textContent="檢查中…";}
+  const err=await login(v);if(err){toast(err,"err");}}
+
+/* ---------- 主管：員工密碼、備份 ---------- */
+/* 員工密碼只有主管看得到：用主管密碼另外加密一份 */
+let AK=null,PINS={};
+function randPin(used){for(;;){const p=String(crypto.getRandomValues(new Uint32Array(1))[0]%10000).padStart(4,"0");if(!used.has(p))return p;}}
+async function loadAdminKey(adminPin,j){
+  if(!j.adm){ // 第一次：取消預設密碼，每人產生一組不重複的密碼
+    await mutate(async(pl,jj)=>{const s=b64(crypto.getRandomValues(new Uint8Array(16)));const ak=await kek(adminPin,s);
+      const people=(pl.people||[]),used=new Set([adminPin]),pins={};
+      for(const k of Object.keys(jj.wraps))if(/^p\d+$/.test(k))delete jj.wraps[k];
+      people.forEach(([n,r],i)=>{if(r==="主管")return;const p=randPin(used);used.add(p);pins["p"+i]=p;});
+      for(const [k,p] of Object.entries(pins))jj.wraps[k]=await wrapKey(p,DKraw);
+      jj.adm={s,...await aesEnc(ak,te.encode(JSON.stringify(pins)))};delete pl.pinSet;if(!(pl.versions||[]).length)pushVersion(pl,"初始班表");});
+    j=await getJson();
+  }
+  AK=await kek(adminPin,j.adm.s);PINS=JSON.parse(td.decode(await aesDec(AK,j.adm)));
+}
+async function setPin(pi,pin){
+  const key=/^\d+$/.test(String(pi))?"p"+pi:String(pi),label=key==="viewer"?"其他主管（只能看）":PEOPLE[pi].n;
+  pin=String(pin||"").trim();
+  if([...pin].length!==4){toast("密碼要剛好 4 個字","err");return;}
+  if(/\s/.test(pin)){toast("密碼不能有空白","err");return;}
+  if(Object.entries(PINS).some(([k,v])=>k!==key&&v===pin)||pin===lsGet("pin")){toast("這組密碼已經有人用了，換一組","err");return;}
+  busyAdmin=true;toast("設定中…","busy");
+  try{await mutate(async(pl,j)=>{const cur=JSON.parse(td.decode(await aesDec(AK,j.adm)));cur[key]=pin;
+      j.wraps[key]=await wrapKey(pin,DKraw);j.adm={s:j.adm.s,...await aesEnc(AK,te.encode(JSON.stringify(cur)))};PINS=cur;});
+    busyAdmin=false;toast(`${label} 的密碼改成 ${pin}`);}
+  catch(e){busyAdmin=false;toast(e&&e.msg||("設定失敗："+(e&&e.code||"請再試一次")),"err");}
+}
+/* ---------- 班表版本（主管用，依日期時間保存） ---------- */
+const VMAX=30;
+const TIMES=[...new Set(CFG.types.flatMap(t=>t.shifts.map(x=>x[1])))];
+function encAssign(assign){return Object.values(assign).map(a=>{const i=TIMES.indexOf(a.t);return `${a.md-1100}.${a.pi}.${i>=0?i:"~"+a.t}`;}).join(";");}
+function decAssign(str){const o={};if(!str)return o;
+  for(const part of str.split(";")){const [ds,ps,ts]=part.split(".");const d=+ds,pi=+ps;const md=1100+d,t=ts&&ts[0]==="~"?ts.slice(1):TIMES[+ts],P=PEOPLE[pi];if(!P||!t||!DAY_BY_MD[md])continue;
+    const [a,b]=t.split("-").map(x=>{const [h,m]=x.split(":").map(Number);return h+m/60;});const s0=a,e0=b<=a?b+24:b;
+    const tpl=CFG.types[DAY_BY_MD[md].type].shifts.find(x=>x[1]===t);const k=tpl?tpl[2]:(s0<=12?"早":s0<16?"中":"晚");
+    o[`${md}-${pi}`]={md,pi,n:P.n,r:P.r,t,k,s:s0,e:e0};}
+  return o;}
+function pushVersion(pl,note){const v=(pl.versions=pl.versions||[]);v.unshift({at:Date.now(),note,a:encAssign(pl.assign||{})});if(v.length>VMAX)v.length=VMAX;}
+let VERS=[],verOpen=null,verArm=null,verPage=0;const VPAGE=5;
+function verDiff(oldA,newA){ // 從 oldA 變成 newA 的差異
+  const ch=[];const keys=new Set([...Object.keys(oldA),...Object.keys(newA)]);
+  for(const k of keys){const o=oldA[k],n=newA[k];if(o&&n&&o.t===n.t)continue;const x=n||o;ch.push({md:x.md,pi:x.pi,n:x.n,from:o?o.t:"休",to:n?n.t:"休"});}
+  return ch.sort((a,b)=>a.md-b.md||a.pi-b.pi);}
+async function saveVersion(){const note=(($("vnote")||{}).value||"").trim()||"手動存版";
+  busyAdmin=true;toast("存版本中…","busy");
+  try{await mutate(pl=>{pushVersion(pl,note);});verPage=0;busyAdmin=false;toast("已存成新版本");}catch(e){busyAdmin=false;toast(e&&e.msg||("存版本失敗："+(e&&e.code||"錯誤")),"err");}}
+async function restoreVersion(i){
+  if(verArm!==i){verArm=i;render();return;}
+  verArm=null;const v=VERS[i];if(!v)return;busyAdmin=true;toast("還原中…","busy");
+  verOpen=null;try{await mutate(pl=>{pushVersion(pl,"還原前自動保存");pl.assign=decAssign(v.a);pushVersion(pl,`還原到 ${fmtAt(v.at)} 的版本`);});busyAdmin=false;toast(`已還原到 ${fmtAt(v.at)} 的版本`);}
+  catch(e){busyAdmin=false;toast(e&&e.msg||("還原失敗："+(e&&e.code||"錯誤")),"err");}}
+const fmtAt=t=>{const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
+function versionsHtml(){
+  let h=`<h2>班表版本</h2><div class="card"><p class="note" style="margin:0">每次核准都會自動存一版，也可以自己存一版並寫上名稱。最多保留最近 ${VMAX} 版。還原時會先自動保存目前的班表，不怕還原錯。</p>
+    <div class="row"><input id="vnote" class="reply" style="flex:1;min-width:0" maxlength="30" placeholder="版本名稱，例如：11 月定稿"><button class="btn pri" data-vsave="1" ${busyAdmin?"disabled":""}>存目前版本</button></div>`;
+  if(!VERS.length)h+=`<div class="empty" style="padding:12px">還沒有任何版本，先按「存目前版本」存一份。</div>`;
+  const vpages=Math.max(1,Math.ceil(VERS.length/VPAGE));if(verPage>=vpages)verPage=vpages-1;if(verPage<0)verPage=0;
+  const vfrom=verPage*VPAGE;
+  VERS.slice(vfrom,vfrom+VPAGE).forEach((v,j)=>{const i=vfrom+j;const A=decAssign(v.a);const d=verDiff(A,ASSIGN);const cnt=Object.keys(A).length;
+    h+=`<div class="verrow"><div><b class="tm">${fmtAt(v.at)}</b> <span>${esc(v.note||"")}</span><div class="note" style="margin:0">${cnt} 班｜${d.length?`跟現在差 ${d.length} 處`:"跟現在一樣"}</div></div>
+      <div class="acts"><button class="btn" data-vview="${i}">${verOpen===i?"收起":"看差異"}</button>${d.length?`<button class="btn ${verArm===i?"no":""}" data-vrestore="${i}" ${busyAdmin?"disabled":""}>${verArm===i?"確定還原？再按一次":"還原這版"}</button>`:""}</div></div>`;
+    if(verOpen===i)h+=d.length?`<div class="verdiff">${d.map(x=>`<div>${fmtMd(x.md)}（${WD[DAY_BY_MD[x.md].w]}） <b>${esc(x.n)}</b>：這版 <span class="tm">${x.from}</span> → 現在 <span class="tm">${x.to}</span></div>`).join("")}</div>`:`<div class="verdiff">跟現在的班表完全一樣。</div>`;
+  });
+  if(vpages>1)h+=`<div class="verpager"><button class="btn" data-vpage="${verPage-1}" ${verPage===0?"disabled":""}>← 較新</button><span class="note" style="margin:0">第 ${verPage+1} / ${vpages} 頁（共 ${VERS.length} 版）</span><button class="btn" data-vpage="${verPage+1}" ${verPage>=vpages-1?"disabled":""}>較舊 →</button></div>`;
+  return h+`</div>`;
+}
+let restoreArm=false;
+async function restoreBackup(){
+  if(!restoreArm){restoreArm=true;render();return;}
+  restoreArm=false;busyAdmin=true;toast("還原中…","busy");
+  try{let b=null;try{b=JSON.parse(lsGet("lastgood")||"null");}catch(e){}
+    if(!b||!b.data||!b.wraps){const r=await fetch("backup/latest.json",{cache:"no-store"});if(!r.ok)throw{code:"找不到備份"};b=await r.json();}
+    if(!b.data||!b.wraps)throw{code:"備份格式不對"};
+    await putJson(b);const w={ok:true};
+    if(!w.ok)throw{code:"連線 "+w.status};busyAdmin=false;storeBroken=false;if(DK)await pull();toast(DK?"已還原":"已還原，請重新輸入密碼");}
+  catch(e){busyAdmin=false;toast(e&&e.msg||("還原失敗："+(e&&e.code||"錯誤")),"err");}
+}
+function adminExtras(){
+  const staff=PEOPLE.filter(p=>p.r!=="主管"&&!p.gone);
+  let h=`<h2>員工密碼</h2><div class="card"><p class="note" style="margin:0">每人一組 4 個字的密碼，只有主管能看、能改，員工不能自己改。私下告訴本人就好。「其他主管」那組可以看班表和全員狀態，但不能改。</p>`;
+  for(const p of staff){const cur=PINS["p"+p.i];
+    h+=`<div class="pinrow"><span><b>${esc(p.n)}</b><span class="role">${p.r}</span></span><span class="pinval">${cur?esc(cur):"未設定"}</span>
+      <input id="pin-${p.i}" class="reply" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="改成（4 個字）">
+      <button class="btn" data-setpin="${p.i}" ${busyAdmin?"disabled":""}>設定</button></div>`;}
+  h+=`<div class="pinrow"><span><b>其他主管</b><span class="role">只能看</span></span><span class="pinval">${PINS.viewer?esc(PINS.viewer):"未設定"}</span>
+      <input id="pin-viewer" class="reply" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="改成（4 個字）">
+      <button class="btn" data-setpin="viewer" ${busyAdmin?"disabled":""}>設定</button></div>`;
+  h+=`</div>`+versionsHtml()+`<h2>資料備份</h2><div class="card"><p class="note" style="margin:0">每支手機打開班表時，都會自動留一份加密的正常資料。如果班表被弄壞，可以還原成這支手機最後一次看到的版本（之後的變更會不見）。</p>
+    <div class="acts"><button class="btn ${restoreArm?"no":""}" data-restore="1" ${busyAdmin?"disabled":""}>${restoreArm?"確定還原？再按一次":"還原備份"}</button></div></div>`;
+  return h;
+}
+
+$("tabAll").onclick=()=>setView("all");$("tabMe").onclick=()=>{setView("all");const h=$("meHead");if(h)h.scrollIntoView({block:"start"});};$("tabAdmin").onclick=()=>setView("admin");
+$("logout").onclick=logout;
+$("reload").onclick=()=>{pull().then(()=>toast("已更新到最新班表")).catch(e=>toast(e&&e.msg||"更新失敗，請稍後再試","err"));};
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.login)doLogin();
+  else if(t.dataset.who)pickWho(+t.dataset.who);
+  else if(t.dataset.relogin){loginState=null;render();}
+  else if(t.dataset.setpin){const pi=t.dataset.setpin;setPin(pi,($("pin-"+pi)||{}).value||"");}
+  else if(t.dataset.restore)restoreBackup();
+  else if(t.dataset.vsave)saveVersion();
+  else if(t.dataset.vpage!==undefined){verPage=+t.dataset.vpage;verOpen=null;verArm=null;render();}
+  else if(t.dataset.vview){const i=+t.dataset.vview;verOpen=verOpen===i?null:i;render();}
+  else if(t.dataset.vrestore)restoreVersion(+t.dataset.vrestore);
+  else if(t.dataset.setup)setupStore();
+});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="pin")doLogin();});
+
+(async()=>{
+  const pin=FS_PROJECT.startsWith("__")?null:lsGet("pin");
+  if(pin){const err=await login(pin);if(err){lsSet("pin","");render();}}
+  else render();
+  // 存放處每月有連線次數上限：不自動輪詢，只在回到這頁且超過 10 分鐘時更新一次，或按「重新整理」
+  document.addEventListener("visibilitychange",()=>{if(DK&&!document.hidden&&Date.now()-lastLoad>600000)pull().catch(()=>{});});
+})();
+</script>
+
+</body>
+</html>
