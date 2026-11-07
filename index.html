@@ -505,8 +505,10 @@ document.addEventListener("input",e=>{if(e.target.id==="note"){draft.note=e.targ
 /* ---------- 主管自己調班：檢查通過就直接改正式班表 ---------- */
 function ownerIssues(eff,c){
   const days=new Set([...[...draft.decline].map(id=>ASSIGN[id]&&ASSIGN[id].md).filter(Boolean),...[...draft.pick.values()].map(p=>p.md)]);
-  const wks=new Set([...days].map(weekOf)); // 每週天數只擋這次有動到的週（之前已接受的週不擋）
-  const out=[...c.hard,...c.soft.filter(m=>{const mm=m.match(/^11\/(\d+) 那週/);return !mm||wks.has(+mm[1]);})];
+  // 之前已接受的超量（某週 >5 天、連上 7 天）不擋；只擋這次改動造成的新問題或更嚴重
+  const pre=checks(effective(0,new Set(),[])).soft,wk=m=>{const mm=m.match(/^11\/(\d+) 那週排 (\d+) 天/);return mm?[+mm[1],+mm[2]]:null;};
+  const preWk={};pre.forEach(m=>{const x=wk(m);if(x)preWk[x[0]]=x[1];});
+  const out=[...c.hard,...c.soft.filter(m=>{const x=wk(m);return x?x[1]>(preWk[x[0]]||5):!pre.includes(m);})];
   for(const md of [...days].sort()){
     const list=Object.entries(ASSIGN).filter(([id,a])=>a.md===md&&!draft.decline.has(id)).map(([,a])=>a);
     for(const p of draft.pick.values())if(p.md===md)list.push({md,pi:0,r:"主管",s:p.s,e:p.e,t:p.t});
