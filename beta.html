@@ -534,7 +534,7 @@ document.addEventListener("click",e=>{
   else if(t.dataset.pick){const s=choices(me).find(x=>x.key===t.dataset.pick);if(s){draft.pick.set(s.key,s);dirty=true;selMe=null;render();}}
   else if(t.dataset.unpick){draft.pick.delete(t.dataset.unpick);dirty=true;render();}
   else if(t.dataset.submit){editOpen=false;submit();}
-  else if(t.dataset.editopen){editOpen=true;render();const g=$("dayp")||document.querySelector(".sendbox");if(g)g.scrollIntoView({block:"nearest"});}
+  else if(t.dataset.editopen){editOpen=true;render();}
   else if(t.dataset.oapply)ownerApply();
   else if(t.dataset.editclose){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;editOpen=false;selMe=null;selAll=null;render();window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});}
   else if(t.dataset.reset){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;editOpen=false;render();}
