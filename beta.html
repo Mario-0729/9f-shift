@@ -441,6 +441,7 @@ function renderMe(target,merged){
   if(r&&r.status==="approved")h+=`<div class="banner">變更都核准了，下面就是你的正式班表。${dl}</div>`;
   if(r&&r.status==="pending")h+=`<div class="banner warn">已送出，等主管審核中。還可以修改後重送。${dl}${rl}</div>`;
   const chg=isOwner?[]:chgOf(me);
+  const compact=merged&&!isOwner&&!editOpen&&!dirty&&!chg.length&&r&&["confirmed","approved","pending"].includes(r.status);
   if(chg.length)h+=`<div class="banner warn"><b>主管調整了你的班，請確認：</b>${chg.map(x=>`<br>${fmtMd(x.md)}（${WD[DAY_BY_MD[x.md].w]}） <span class="tm">${x.from}</span> → <span class="tm">${x.to}</span>`).join("")}<br>可以配合就按最下面「同意異動，送出確認」；不行的話點那天改「不能」再送出。</div>`;
   h+=`<div class="legend"><span><i class="sw ok"></i>可以</span><span><i class="sw no"></i>不能</span><span><i class="sw pk"></i>補選</span>${needPick?`<span><i class="sw op"></i>可選班</span>`:""}</div>`;
   let ph="";
@@ -466,6 +467,13 @@ function renderMe(target,merged){
     if(merged)ph+=`</div>`;
   }
 
+  if(compact&&selMe!==null&&DAY_BY_MD[selMe]){const a=offBy[selMe],p=pickBy[selMe];
+    let line;
+    if(a&&!draft.decline.has(a.id))line=`<div class="tm" style="font-size:17px">${a.t}</div><div class="k">${a.k}班</div>`;
+    else if(p)line=`<div class="tm" style="font-size:17px">${p.t}</div><div class="k">${p.k}班｜補選｜${ptag}</div>`;
+    else if(a)line=`<div class="tm" style="font-size:17px;text-decoration:line-through;color:var(--muted)">${a.t}</div><div class="k">申請休｜${ptag}</div>`;
+    else line=`<div class="k" style="font-size:15px">你這天休</div>`;
+    ph=`<div class="mybox"><div class="k">你的班</div><div class="shift" style="border:0;padding:0;background:transparent"><div class="info">${line}</div><button class="btn" data-editopen="1">要換班</button></div></div>`;}
   if(diff>0)h+=`<div class="banner warn" id="gap"><b>還少 ${diff} 班</b>：點紅色日期可以改上同一天的其他時段，或點<b>虛線框（可選）</b>的日期補班。</div>`;
   let cells=null;
   if(merged){cells={};for(const d of DAYS){const md=d.md,a=offBy[md],p=pickBy[md];
@@ -493,6 +501,9 @@ function renderMe(target,merged){
   if(!merged){h+=`</div>`;
   if(!ph)h+=`<p class="note">點日曆上的日期會在那一週下面展開，可以改「不能」或補選那天的班。</p>`;}
   const top=h;if(merged)h="";
+  if(compact){const pendN=pend.d.size+pend.p.size;
+    h=`<div class="sendbox">${flashHtml()}<div class="msg">${r.status==="pending"?`已送出 ${pendN} 項變更，等主管審核。`:"你已確認班表。"}要換班再按這裡，或點日期看那天。</div><div class="acts"><button class="btn" data-editopen="1">要換班</button></div></div>`;
+    renderAll(main,{cells,ph,top,bottom:h,needPick:false,hasPend:pendN>0});return;}
   const c=checks(eff);
   if(c.hard.length||c.soft.length)h+=`<div class="banner warn">${[...c.hard,...c.soft].map(esc).join("<br>")}</div>`;
   h+=`<h2>備註（選填）</h2><textarea id="note" placeholder="例如：11/14 下午有課，晚上可以">${esc(draft.note)}</textarea>`;
@@ -525,9 +536,10 @@ document.addEventListener("click",e=>{
   else if(t.dataset.no){draft.decline.add(t.dataset.no);dirty=true;selMe=null;render();const g=$("gap");if(g)g.scrollIntoView({block:"nearest"});}
   else if(t.dataset.pick){const s=choices(me).find(x=>x.key===t.dataset.pick);if(s){draft.pick.set(s.key,s);dirty=true;selMe=null;render();}}
   else if(t.dataset.unpick){draft.pick.delete(t.dataset.unpick);dirty=true;render();}
-  else if(t.dataset.submit)submit();
+  else if(t.dataset.submit){editOpen=false;submit();}
+  else if(t.dataset.editopen){editOpen=true;render();const g=$("dayp")||document.querySelector(".sendbox");if(g)g.scrollIntoView({block:"nearest"});}
   else if(t.dataset.oapply)ownerApply();
-  else if(t.dataset.reset){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;render();}
+  else if(t.dataset.reset){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;editOpen=false;render();}
   else if(t.dataset.go)setView(t.dataset.go);
   else if(t.dataset.rper){const pi=+t.dataset.rper;rper=rper===pi?null:pi;rday=null;render();}
   else if(t.dataset.rday){rday=+t.dataset.rday;render();}
@@ -567,7 +579,7 @@ async function ownerApply(){
     sending=false;draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;toast("已改好正式班表，也存了一版「主管自調」");}
   catch(e){sending=false;toast(e&&e.msg||("套用失敗："+(e&&e.code||"請再試一次")),"err");}
 }
-let sending=false;
+let sending=false,editOpen=false; // editOpen：已送出／已確認的人按「要換班」才展開改班功能
 async function submit(){
   if(me===null||sending)return;
   const changes=draft.decline.size+draft.pick.size;
