@@ -123,7 +123,8 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
 .nm.mine.x{text-decoration:line-through;opacity:.6}.nm.mine.add{background:var(--pick);color:var(--panel)}
 .nextcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:10px 0 6px;display:flex;flex-direction:column;gap:6px}
 .nextcard .lbl{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em;display:flex;justify-content:space-between;align-items:center}
-.nextcard .lnk{font:inherit;font-size:13px;font-weight:700;border:0;background:transparent;color:var(--accent);padding:2px 0;cursor:pointer;letter-spacing:0}
+.lnk{font:inherit;font-size:14px;font-weight:700;border:0;background:transparent;color:var(--accent);padding:6px 0;cursor:pointer;letter-spacing:0;text-decoration:underline;text-underline-offset:3px}
+.editrow{display:flex;justify-content:flex-end;margin-top:6px}
 .nextcard .nx{display:grid;grid-template-columns:max-content max-content 1fr;column-gap:14px;row-gap:3px;align-items:center;font-size:15px}
 .nextcard .nx .d{font-weight:700}.nextcard .nx .t{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .nextcard .nx span:nth-child(-n+3){font-size:17px}
@@ -443,7 +444,7 @@ function renderMe(target,merged){
   if(r&&r.status==="pending")h+=`<div class="banner warn">已送出，等主管審核中。還可以修改後重送。${dl}${rl}</div>`;
   const chg=isOwner?[]:chgOf(me);
   const canCompact=merged&&!isOwner&&!chg.length&&r&&["confirmed","approved","pending"].includes(r.status);
-  const compact=canCompact&&!editOpen&&!dirty;
+  const compact=canCompact&&!dirty;
   if(chg.length)h+=`<div class="banner warn"><b>主管調整了你的班，請確認：</b>${chg.map(x=>`<br>${fmtMd(x.md)}（${WD[DAY_BY_MD[x.md].w]}） <span class="tm">${x.from}</span> → <span class="tm">${x.to}</span>`).join("")}<br>可以配合就按最下面「同意異動，送出確認」；不行的話點那天改「不能」再送出。</div>`;
   h+=`<div class="legend"><span><i class="sw ok"></i>可以</span><span><i class="sw no"></i>不能</span><span><i class="sw pk"></i>補選</span>${needPick?`<span><i class="sw op"></i>可選班</span>`:""}</div>`;
   let ph="";
@@ -469,7 +470,7 @@ function renderMe(target,merged){
     if(merged)ph+=`</div>`;
   }
 
-  if(compact)ph=""; // 已送審／已審核：時間軸已標出自己的班，不重複顯示
+  if(compact&&!(selMe!==null&&editDay===selMe))ph=selMe!==null&&DAY_BY_MD[selMe]?`<div class="editrow"><button class="lnk" data-editday="${selMe}">換這天的班</button></div>`:""; // 已送審／已審核：時間軸已標出自己的班，要換才展開
   if(diff>0)h+=`<div class="banner warn" id="gap"><b>還少 ${diff} 班</b>：點紅色日期可以改上同一天的其他時段，或點<b>虛線框（可選）</b>的日期補班。</div>`;
   let cells=null;
   if(merged){cells={};for(const d of DAYS){const md=d.md,a=offBy[md],p=pickBy[md];
@@ -477,7 +478,7 @@ function renderMe(target,merged){
     else if(diff>0&&slotsBy[md]&&slotsBy[md].some(s=>!pickBlock(me,s,draft.decline,picks)))cells[md]="op";}
     h=h.replace(`<button class="back" data-go="all">← 回總班表</button>`,"");
     const legendAt=h.indexOf('<div class="legend">');if(legendAt>=0)h=h.slice(0,legendAt)+h.slice(h.indexOf("</div>",legendAt)+6);
-    h=nextCard(me,eff,canCompact?(compact?"open":"close"):null)+h;}
+    h=nextCard(me,eff)+h;}
   h+=merged?"":`<div class="cal">${calHead()}`;
   if(!merged)
   calCells().forEach((d,i,arr)=>{
@@ -527,17 +528,17 @@ function showPanel(id){const p=$(id||"dayp");if(!p)return;const r=p.getBoundingC
   if(r.bottom>window.innerHeight-70){const sm=matchMedia("(prefers-reduced-motion: reduce)").matches;p.scrollIntoView({behavior:sm?"auto":"smooth",block:r.height>window.innerHeight-200?"start":"end"});}}
 document.addEventListener("click",e=>{
   const t=e.target.closest("button");if(!t)return;
-  if(t.dataset.allday){const md=+t.dataset.allday;selAll=selAll===md?null:md;if(view==="all"&&!isViewer&&me!==null)selMe=selAll;render();if(selAll)showPanel();}
+  if(t.dataset.allday){const md=+t.dataset.allday;selAll=selAll===md?null:md;if(view==="all"&&!isViewer&&me!==null){selMe=selAll;editDay=null;}render();if(selAll)showPanel();}
   else if(t.dataset.day){const md=+t.dataset.day;selMe=selMe===md?null:md;render();if(selMe)showPanel("dayme");}
   else if(t.dataset.ok){draft.decline.delete(t.dataset.ok);dirty=true;render();}
   else if(t.dataset.no){draft.decline.add(t.dataset.no);dirty=true;selMe=null;render();const g=$("gap");if(g)g.scrollIntoView({block:"nearest"});}
   else if(t.dataset.pick){const s=choices(me).find(x=>x.key===t.dataset.pick);if(s){draft.pick.set(s.key,s);dirty=true;selMe=null;render();}}
   else if(t.dataset.unpick){draft.pick.delete(t.dataset.unpick);dirty=true;render();}
-  else if(t.dataset.submit){editOpen=false;submit();}
-  else if(t.dataset.editopen){editOpen=true;render();}
+  else if(t.dataset.submit){editDay=null;submit();}
+  else if(t.dataset.editday){editDay=+t.dataset.editday;render();}
   else if(t.dataset.oapply)ownerApply();
-  else if(t.dataset.editclose){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;editOpen=false;selMe=null;selAll=null;render();window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});}
-  else if(t.dataset.reset){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;editOpen=false;render();}
+  else if(t.dataset.editclose){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;editDay=null;selMe=null;selAll=null;render();window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});}
+  else if(t.dataset.reset){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;editDay=null;render();}
   else if(t.dataset.go)setView(t.dataset.go);
   else if(t.dataset.rper){const pi=+t.dataset.rper;rper=rper===pi?null:pi;rday=null;render();}
   else if(t.dataset.rday){rday=+t.dataset.rday;render();}
@@ -577,7 +578,7 @@ async function ownerApply(){
     sending=false;draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;toast("已改好正式班表，也存了一版「主管自調」");}
   catch(e){sending=false;toast(e&&e.msg||("套用失敗："+(e&&e.code||"請再試一次")),"err");}
 }
-let sending=false,editOpen=false; // editOpen：已送出／已確認的人按「要換班」才展開改班功能
+let sending=false,editDay=null; // editDay：已送出／已確認的人在當天面板按「換這天的班」才展開那天的改班功能
 async function submit(){
   if(me===null||sending)return;
   const changes=draft.decline.size+draft.pick.size;
