@@ -119,6 +119,7 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
 .sw.ok{background:var(--ok)} .sw.no{background:var(--no)} .sw.pk{background:var(--pick)} .sw.op{border:2px dashed var(--pick)}
 .cell.all.m-ok{background:var(--ok-bg)}.cell.all.m-no{background:var(--no-bg)}.cell.all.m-pk{background:var(--pick-bg)}.cell.all.m-op{border:2px dashed var(--pick);padding:3px 2px 4px}
 .cell.all.today{border:2px solid var(--accent);padding:3px 2px 4px}
+.pendtag{font-style:normal;font-size:10px;font-weight:700;line-height:1.4;text-align:center;border-radius:4px;background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
 .nm.mine.x{text-decoration:line-through;opacity:.6}.nm.mine.add{background:var(--pick);color:var(--panel)}
 .nextcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0 6px;display:flex;flex-direction:column;gap:6px}
 .nextcard .lbl{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em}
@@ -351,16 +352,16 @@ function renderAll(target,M){
   for(const k in byDay)byDay[k].sort((x,y)=>ROLE_ORD[x.r]-ROLE_ORD[y.r]||x.s-y.s||x.pi-y.pi);
   let h=`<div class="legend"><span><i class="k r0"></i>主管</span><span><i class="k r1"></i>正職</span><span><i class="k r2"></i>兼職</span>${me!==null?`<span><b class="mine-dot">${esc(shortN(PEOPLE[me].n))}</b>＝你</span>`:""}<span>點日期展開當天時間</span></div>`;
   const panel=selAll?tlPanel(selAll,byDay,{mine:M?M.ph:""}):"";
-  if(M)h=M.top+h.replace('<span>點日期展開當天時間</span>','<span><i class="sw ok"></i>我上班</span><span><i class="sw no"></i>不能</span><span><i class="sw pk"></i>補選</span>'+(M.needPick?'<span><i class="sw op"></i>可選班</span>':'')+'<span>點日期看當天、改班</span>');
+  if(M)h=M.top+h.replace('<span>點日期展開當天時間</span>','<span><i class="sw ok"></i>我上班</span><span><i class="sw no"></i>不能</span><span><i class="sw pk"></i>補選</span>'+(M.needPick?'<span><i class="sw op"></i>可選班</span>':'')+'<span>點日期看當天、改班</span>'+(M.hasPend?'<span><i class="pendtag" style="padding:0 3px">審核中</i>＝已送出</span>':''));
   h+=`<div class="cal" role="grid">${calHead()}`;
   calCells().forEach((d,i,arr)=>{
     const md=1100+d,day=DAY_BY_MD[md];
     if(!day)h+=`<div class="cell out"><div class="dn">${d>0?d:d+31}</div></div>`;
     else{const list=byDay[md]||[];const we=day.w===0||day.w===6;
-    const mc=M&&M.cells[md];
+    const mc0=M&&M.cells[md]||"",mc=mc0.split(" ")[0],pd=mc0.includes("pend");
     h+=`<button class="cell all${selAll===md?" sel":""}${md===tmd?" today":""}${mc?" m-"+mc:""}" data-allday="${md}" aria-expanded="${selAll===md}"${md===tmd?' aria-current="date"':""}>
       <div class="dn${we?" we":""}">${md===tmd?`<span class="d">${d}</span>`:d}<small>${list.length}人</small></div>
-      <div class="names">${list.map(a=>`<i class="nm ${RK[a.r]}${a.pi===me?" mine"+(mc==="no"?" x":""):""}">${esc(shortN(a.n))}</i>`).join("")}${mc==="pk"?`<i class="nm mine add">＋${esc(shortN(PEOPLE[me].n))}</i>`:""}</div></button>`;}
+      ${pd?`<i class="pendtag">審核中</i>`:""}<div class="names">${list.map(a=>`<i class="nm ${RK[a.r]}${a.pi===me?" mine"+(mc==="no"?" x":""):""}">${esc(shortN(a.n))}</i>`).join("")}${mc==="pk"?`<i class="nm mine add">＋${esc(shortN(PEOPLE[me].n))}</i>`:""}</div></button>`;}
     if((i%7===6||i===arr.length-1)&&selAll&&Math.floor((selAll-1095)/7)===Math.floor(i/7))h+=`<div class="expand" id="dayp">${panel}</div>`;
   });
   h+=`</div><p class="note">工時含休息（9 小時班＝實際 8 小時＋休息 1 小時）。${M?"格子底色是你自己的班；名字是目前的正式班表，改班要主管核准後才會更新。":"這是目前的正式班表，同事改班要主管核准後才會更新到這裡。"}</p>`;
@@ -427,6 +428,8 @@ function renderMe(target,merged){
   $("stChip").innerHTML=isOwner?"":statusChip(me);
   const r=REQ["p"+me];
   const role=P.r==="兼職"?"兼職":"正職";
+  const pend=r&&r.status==="pending"?{d:new Set(r.decline||[]),p:new Set((r.pick||[]).map(x=>x.key))}:{d:new Set(),p:new Set()};
+  const ptag=`<span class="why soft">已送審，等主管核准</span>`;
   const needPick=draft.decline.size>0||diff>0||draft.pick.size>0;
   const slots=choices(me);
   const slotsBy={};for(const s of slots)if(!draft.pick.has(s.key))(slotsBy[s.md]=slotsBy[s.md]||[]).push(s);
@@ -447,9 +450,9 @@ function renderMe(target,merged){
     const day=DAY_BY_MD[selMe],a=offBy[selMe],p=pickBy[selMe];
     ph+=merged?`<div class="mybox"><div class="k">你的班</div><div class="list">`:`<div class="dhead"><h2>${fmtMd(selMe)}（週${WD[day.w]}）</h2><button class="x" data-day="${selMe}" aria-label="收合">收合 ▲</button></div><div class="list">`;
     if(a){const no=draft.decline.has(a.id);
-      ph+=`<div class="shift${no?" declined":""}"><div class="info"><div class="k">${a.k}班｜主管預排</div><div class="tm">${a.t}</div></div>
+      ph+=`<div class="shift${no?" declined":""}"><div class="info"><div class="k">${a.k}班｜主管預排${merged&&no&&pend.d.has(a.id)?"｜"+ptag:""}</div><div class="tm">${a.t}</div></div>
         <div class="seg"><button data-ok="${a.id}" class="${no?"":"on-ok"}" aria-pressed="${!no}">可以</button><button data-no="${a.id}" class="${no?"on-no":""}" aria-pressed="${no}">不能</button></div></div>`;}
-    if(p)ph+=`<div class="shift picked"><div class="info"><div class="k">${p.k}班｜補選</div><div class="tm">${p.t}</div></div><button class="btn" data-unpick="${esc(p.key)}">取消</button></div>`;
+    if(p)ph+=`<div class="shift picked"><div class="info"><div class="k">${p.k}班｜補選${merged&&pend.p.has(p.key)?"｜"+ptag:""}</div><div class="tm">${p.t}</div></div><button class="btn" data-unpick="${esc(p.key)}">取消</button></div>`;
     const others={};for(const [k,q] of Object.entries(REQ))if(k!=="p"+me&&q.status==="pending")(q.pick||[]).forEach(x=>others[x.key]=(others[x.key]||0)+1);
     const ds=(slotsBy[selMe]||[]).filter(x=>!p&&(!a||(draft.decline.has(a.id)&&x.t!==a.t)));
     if(ds.length){
@@ -467,8 +470,8 @@ function renderMe(target,merged){
   if(diff>0)h+=`<div class="banner warn" id="gap"><b>還少 ${diff} 班</b>：點紅色日期可以改上同一天的其他時段，或點<b>虛線框（可選）</b>的日期補班。</div>`;
   let cells=null;
   if(merged){cells={};for(const d of DAYS){const md=d.md,a=offBy[md],p=pickBy[md];
-    if(a&&!draft.decline.has(a.id))cells[md]="ok";else if(p)cells[md]="pk";else if(a)cells[md]="no";
-    else if(needPick&&slotsBy[md]&&slotsBy[md].some(s=>!pickBlock(me,s,draft.decline,picks)))cells[md]="op";}
+    if(a&&!draft.decline.has(a.id))cells[md]="ok";else if(p)cells[md]=pend.p.has(p.key)?"pk pend":"pk";else if(a)cells[md]=pend.d.has(a.id)?"no pend":"no";
+    else if(diff>0&&slotsBy[md]&&slotsBy[md].some(s=>!pickBlock(me,s,draft.decline,picks)))cells[md]="op";}
     h=h.replace(`<button class="back" data-go="all">← 回總班表</button>`,"");
     const legendAt=h.indexOf('<div class="legend">');if(legendAt>=0)h=h.slice(0,legendAt)+h.slice(h.indexOf("</div>",legendAt)+6);
     h=nextCard(me,eff)+h;}
@@ -505,12 +508,12 @@ function renderMe(target,merged){
     h+=`<div class="sendbox">${flashHtml()}<div class="msg" style="white-space:pre-line">${esc(msg)}</div><div class="acts">
     <button class="btn ok" data-oapply="1" ${changes===0||iss.length||sending?"disabled":""}>${sending?"套用中…":"同意，直接改正式班表"}</button>
     ${changes?`<button class="btn" data-reset="1">取消變更</button>`:""}
-    ${merged?"":`<button class="btn" data-go="all">← 回總班表</button>`}</div></div>`;if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick});return;}main.innerHTML=h;return;}
+    ${merged?"":`<button class="btn" data-go="all">← 回總班表</button>`}</div></div>`;if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick:diff>0,hasPend:pend.d.size+pend.p.size>0});return;}main.innerHTML=h;return;}
   h+=`<div class="sendbox">${flashHtml()}<div class="msg">${esc(msg)}</div><div class="acts">
     <button class="btn pri" data-submit="1" ${dis?"disabled":""}>${sending?"送出中…":label}</button>
     ${changes?`<button class="btn" data-reset="1">取消變更</button>`:""}
     ${merged?"":`<button class="btn" data-go="all">← 回總班表</button>`}</div></div>`;
-  if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick});return;}
+  if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick:diff>0,hasPend:pend.d.size+pend.p.size>0});return;}
   main.innerHTML=h;
 }
 function showPanel(id){const p=$(id||"dayp");if(!p)return;const r=p.getBoundingClientRect();
