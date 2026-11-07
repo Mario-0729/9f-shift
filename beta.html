@@ -406,7 +406,7 @@ function nextCard(pi,eff,edit){
   const now=new Date(),tmd=now.getMonth()===10?1100+now.getDate():(now.getMonth()>10?1200:1100),hr=now.getHours()+now.getMinutes()/60;
   const list=[...eff].sort((x,y)=>x.md-y.md||x.s-y.s).filter(a=>a.md>tmd||(a.md===tmd&&(a.e>a.s?a.e:a.e+24)>hr));
   const wk=weekOf(tmd>1100&&tmd<1200?tmd:1101),wkN=eff.filter(a=>weekOf(a.md)===wk).length;
-  let h=`<div class="nextcard"><div class="lbl"><span>下一班</span>${edit?`<button class="lnk" data-editopen="1">要換班</button>`:""}</div>`;
+  let h=`<div class="nextcard"><div class="lbl"><span>下一班</span>${edit==="open"?`<button class="lnk" data-editopen="1">要換班</button>`:edit==="close"?`<button class="lnk" data-editclose="1">${dirty?"取消換班":"收起換班"}</button>`:""}</div>`;
   if(!list.length)h+=`<div class="nx"><span>11 月沒有班了</span></div>`;
   else h+=`<div class="nx">${list.slice(0,3).map(a=>`<span class="d">${fmtMd(a.md)}（${WD[DAY_BY_MD[a.md].w]}）</span><span class="t">${a.t}</span><span class="g">${a.md===tmd?"<small>今天</small>":a.md===tmd+1?"<small>明天</small>":""}</span>`).join("")}</div>`;
   h+=`<div class="stats">本週 <b>${wkN}</b> 天｜11 月 <b>${eff.length}</b> 班｜剩 <b>${list.length}</b> 班</div></div>`;
@@ -442,7 +442,8 @@ function renderMe(target,merged){
   if(r&&r.status==="approved")h+=`<div class="banner">變更都核准了，下面就是你的正式班表。${dl}</div>`;
   if(r&&r.status==="pending")h+=`<div class="banner warn">已送出，等主管審核中。還可以修改後重送。${dl}${rl}</div>`;
   const chg=isOwner?[]:chgOf(me);
-  const compact=merged&&!isOwner&&!editOpen&&!dirty&&!chg.length&&r&&["confirmed","approved","pending"].includes(r.status);
+  const canCompact=merged&&!isOwner&&!chg.length&&r&&["confirmed","approved","pending"].includes(r.status);
+  const compact=canCompact&&!editOpen&&!dirty;
   if(chg.length)h+=`<div class="banner warn"><b>主管調整了你的班，請確認：</b>${chg.map(x=>`<br>${fmtMd(x.md)}（${WD[DAY_BY_MD[x.md].w]}） <span class="tm">${x.from}</span> → <span class="tm">${x.to}</span>`).join("")}<br>可以配合就按最下面「同意異動，送出確認」；不行的話點那天改「不能」再送出。</div>`;
   h+=`<div class="legend"><span><i class="sw ok"></i>可以</span><span><i class="sw no"></i>不能</span><span><i class="sw pk"></i>補選</span>${needPick?`<span><i class="sw op"></i>可選班</span>`:""}</div>`;
   let ph="";
@@ -476,7 +477,7 @@ function renderMe(target,merged){
     else if(diff>0&&slotsBy[md]&&slotsBy[md].some(s=>!pickBlock(me,s,draft.decline,picks)))cells[md]="op";}
     h=h.replace(`<button class="back" data-go="all">← 回總班表</button>`,"");
     const legendAt=h.indexOf('<div class="legend">');if(legendAt>=0)h=h.slice(0,legendAt)+h.slice(h.indexOf("</div>",legendAt)+6);
-    h=nextCard(me,eff,compact)+h;}
+    h=nextCard(me,eff,canCompact?(compact?"open":"close"):null)+h;}
   h+=merged?"":`<div class="cal">${calHead()}`;
   if(!merged)
   calCells().forEach((d,i,arr)=>{
@@ -517,6 +518,7 @@ function renderMe(target,merged){
   h+=`<div class="sendbox">${flashHtml()}<div class="msg">${esc(msg)}</div><div class="acts">
     <button class="btn pri" data-submit="1" ${dis?"disabled":""}>${sending?"送出中…":label}</button>
     ${changes?`<button class="btn" data-reset="1">取消變更</button>`:""}
+    ${canCompact?`<button class="btn" data-editclose="1">${changes?"取消換班並收起":"收起換班"}</button>`:""}
     ${merged?"":`<button class="btn" data-go="all">← 回總班表</button>`}</div></div>`;
   if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick:diff>0,hasPend:pend.d.size+pend.p.size>0});return;}
   main.innerHTML=h;
@@ -534,6 +536,7 @@ document.addEventListener("click",e=>{
   else if(t.dataset.submit){editOpen=false;submit();}
   else if(t.dataset.editopen){editOpen=true;render();const g=$("dayp")||document.querySelector(".sendbox");if(g)g.scrollIntoView({block:"nearest"});}
   else if(t.dataset.oapply)ownerApply();
+  else if(t.dataset.editclose){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;editOpen=false;selMe=null;selAll=null;render();window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});}
   else if(t.dataset.reset){draft.decline.clear();draft.pick.clear();dirty=false;draftFor=null;editOpen=false;render();}
   else if(t.dataset.go)setView(t.dataset.go);
   else if(t.dataset.rper){const pi=+t.dataset.rper;rper=rper===pi?null:pi;rday=null;render();}
