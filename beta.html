@@ -468,13 +468,7 @@ function renderMe(target,merged){
     if(merged)ph+=`</div>`;
   }
 
-  if(compact&&selMe!==null&&DAY_BY_MD[selMe]){const a=offBy[selMe],p=pickBy[selMe];
-    let line;
-    if(a&&!draft.decline.has(a.id))line=`<div class="tm" style="font-size:17px">${a.t}</div><div class="k">${a.k}班</div>`;
-    else if(p)line=`<div class="tm" style="font-size:17px">${p.t}</div><div class="k">${p.k}班｜補選｜${ptag}</div>`;
-    else if(a)line=`<div class="tm" style="font-size:17px;text-decoration:line-through;color:var(--muted)">${a.t}</div><div class="k">申請休｜${ptag}</div>`;
-    else line=`<div class="k" style="font-size:15px">你這天休</div>`;
-    ph=`<div class="mybox"><div class="k">你的班</div><div class="shift" style="border:0;padding:0;background:transparent"><div class="info">${line}</div><button class="btn" data-editopen="1">要換班</button></div></div>`;}
+  if(compact)ph=""; // 已送審／已審核：時間軸已標出自己的班，不重複顯示
   if(diff>0)h+=`<div class="banner warn" id="gap"><b>還少 ${diff} 班</b>：點紅色日期可以改上同一天的其他時段，或點<b>虛線框（可選）</b>的日期補班。</div>`;
   let cells=null;
   if(merged){cells={};for(const d of DAYS){const md=d.md,a=offBy[md],p=pickBy[md];
