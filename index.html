@@ -197,7 +197,7 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
 
 <header class="top"><div class="in">
   <div class="row">
-    <h1>星聚點 9F 班表<small>11/4–11/30</small></h1>
+    <h1>星聚點 9F 班表<small>11/1–11/30</small></h1>
     <div class="tabs" id="tabs" hidden>
       <button id="tabAll" aria-pressed="true">總班表</button>
       <button id="tabMe" aria-pressed="false">我的班</button>
@@ -219,7 +219,8 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
 <script id="app">
 const CFG={"types":[{"name":"週一～四","shifts":[["主管","14:00-23:00","中",14.0,23.0],["正職","12:30-21:30","早",12.5,21.5],["正職","14:00-23:00","中",14.0,23.0],["正職","14:00-23:00","中",14.0,23.0],["兼職","13:00-22:00","中",13.0,22.0],["兼職","18:30-22:30","晚",18.5,22.5]]},{"name":"週五","shifts":[["主管","15:00-00:00","中",15.0,24.0],["正職","12:30-21:30","早",12.5,21.5],["正職","15:00-00:00","中",15.0,24.0],["正職","17:00-02:00","晚",17.0,26.0],["正職","17:00-02:00","晚",17.0,26.0],["兼職","17:00-02:00","晚",17.0,26.0],["兼職","18:30-22:30","晚",18.5,22.5],["兼職","20:00-02:00","晚",20.0,26.0]]},{"name":"週六","shifts":[["主管","13:00-22:00","中",13.0,22.0],["正職","10:30-19:30","早",10.5,19.5],["正職","10:30-19:30","早",10.5,19.5],["正職","10:30-19:30","早",10.5,19.5],["正職","17:00-02:00","晚",17.0,26.0],["正職","17:00-02:00","晚",17.0,26.0],["兼職","10:30-19:30","早",10.5,19.5],["兼職","10:30-19:30","早",10.5,19.5],["兼職","17:00-02:00","晚",17.0,26.0],["兼職","20:00-02:00","晚",20.0,26.0]]},{"name":"週日","shifts":[["主管","13:00-22:00","中",13.0,22.0],["正職","10:30-19:30","早",10.5,19.5],["正職","13:00-22:00","中",13.0,22.0],["正職","13:00-22:00","中",13.0,22.0],["正職","14:00-23:00","中",14.0,23.0],["正職","14:00-23:00","中",14.0,23.0],["兼職","13:00-22:00","中",13.0,22.0],["兼職","14:00-23:00","中",14.0,23.0]]},{"name":"訓練","shifts":[["主管","10:00-19:00","訓",10.0,19.0],["正職","10:00-19:00","訓",10.0,19.0],["正職","13:30-22:30","訓",13.5,22.5],["兼職","10:00-19:00","訓",10.0,19.0],["兼職","18:30-22:30","訓",18.5,22.5]]}]};
 const WD=["日","一","二","三","四","五","六"];
-const DAYS=[];for(let d=4;d<=30;d++){const dt=new Date(2026,10,d);const w=dt.getDay();DAYS.push({md:1100+d,d,w,type:d<6?4:w===5?1:w===6?2:w===0?3:0,idx:d-4});}
+const DAYS=[];for(let d=1;d<=30;d++){const dt=new Date(2026,10,d);const w=dt.getDay();DAYS.push({md:1100+d,d,w,type:d<6?4:w===5?1:w===6?2:w===0?3:0,idx:d-1});}
+const PICK_FROM=1104; // 11/1–11/3 開幕前，只記實際出勤，不開放選班
 const DAY_BY_MD=Object.fromEntries(DAYS.map(x=>[x.md,x]));
 let PEOPLE=[];
 const $=id=>document.getElementById(id);
@@ -244,7 +245,7 @@ function choices(pi){ // 員工可選：自己職務在每一天範本裡的所�
   const openSet=new Set(openSlots().filter(s=>s.r===role).map(s=>s.md+"|"+s.t));
   const out=[];
   for(const day of DAYS){
-    if(P.from&&day.md<P.from)continue;
+    if(day.md<PICK_FROM||(P.from&&day.md<P.from))continue;
     const seen=new Set();
     for(const [r,t,k,s,e] of CFG.types[day.type].shifts){
       if(!roles.includes(r)||seen.has(t))continue;seen.add(t);
@@ -256,6 +257,7 @@ function choices(pi){ // 員工可選：自己職務在每一天範本裡的所�
 function openSlots(){ // 範本 − 正式班表
   const out=[];
   for(const day of DAYS){
+    if(day.md<PICK_FROM)continue;
     const used={};for(const a of Object.values(ASSIGN))if(a.md===day.md){const k=a.r+"|"+a.t;used[k]=(used[k]||0)+1;}
     const seen={};
     for(const [r,t,k,s,e] of CFG.types[day.type].shifts){
@@ -271,7 +273,7 @@ function effective(pi,decl,picks){
   return list.sort((x,y)=>x.md-y.md||x.s-y.s);
 }
 const absStart=x=>DAY_BY_MD[x.md].idx*24+x.s, absEnd=x=>DAY_BY_MD[x.md].idx*24+x.e;
-function weekOf(md){const d=DAY_BY_MD[md];const mon=d.d-((d.w+6)%7);return Math.max(mon,4);} // 週一為一週開始
+function weekOf(md){const d=DAY_BY_MD[md];const mon=d.d-((d.w+6)%7);return Math.max(mon,1);} // 週一為一週開始
 function checks(list){ // 回傳 {hard:[], soft:[]}
   const hard=[],soft=[];
   for(let i=1;i<list.length;i++){
@@ -318,7 +320,7 @@ function statusChip(pi){
 }
 const ROLE_ORD={主管:0,正職:1,兼職:2};
 const shortN=n=>PEOPLE.some(p=>p.r==="主管"&&p.n===n)?"主管":n.length===3?n.slice(1):n;
-function calCells(){const out=[];for(let i=0;i<35;i++){const dt=new Date(2026,10,2+i);if(dt.getMonth()!==10)break;out.push(dt.getDate());}return out;}
+function calCells(){const out=[];for(let i=0;i<42;i++){const dt=new Date(2026,10,-5+i);if(dt.getMonth()===11)break;out.push(dt.getMonth()===9?dt.getDate()-31:dt.getDate());}return out;} // 從 10/26（週一）開始，10 月的格子用 ≤0 表示
 function calHead(){return ["一","二","三","四","五","六","日"].map((w,i)=>`<div class="ch${i>=5?" we":""}">${w}</div>`).join("");}
 const tm2=t=>{const [a,b]=t.split("-");return `<span>${a}</span><span>${b}</span>`;};
 let selAll=null,selMe=null;
@@ -340,12 +342,12 @@ function renderAll(){
   h+=`<div class="cal" role="grid">${calHead()}`;
   calCells().forEach((d,i,arr)=>{
     const md=1100+d,day=DAY_BY_MD[md];
-    if(!day)h+=`<div class="cell out"><div class="dn">${d}</div></div>`;
+    if(!day)h+=`<div class="cell out"><div class="dn">${d>0?d:d+31}</div></div>`;
     else{const list=byDay[md]||[];const we=day.w===0||day.w===6;
     h+=`<button class="cell all${selAll===md?" sel":""}${md===tmd?" today":""}" data-allday="${md}" aria-expanded="${selAll===md}"${md===tmd?' aria-current="date"':""}>
       <div class="dn${we?" we":""}">${md===tmd?`<span class="d">${d}</span>`:d}<small>${list.length}人</small></div>
       <div class="names">${list.map(a=>`<i class="nm ${RK[a.r]}${a.pi===me?" mine":""}">${esc(shortN(a.n))}</i>`).join("")}</div></button>`;}
-    if((i%7===6||i===arr.length-1)&&selAll&&Math.floor((selAll-1102)/7)===Math.floor(i/7))h+=`<div class="expand" id="dayp">${panel}</div>`;
+    if((i%7===6||i===arr.length-1)&&selAll&&Math.floor((selAll-1095)/7)===Math.floor(i/7))h+=`<div class="expand" id="dayp">${panel}</div>`;
   });
   h+=`</div><p class="note">工時含休息（9 小時班＝實際 8 小時＋休息 1 小時）。這是目前的正式班表，同事改班要主管核准後才會更新到這裡。</p>`;
   $("main").innerHTML=h;
@@ -439,7 +441,7 @@ function renderMe(){
   h+=`<div class="cal">${calHead()}`;
   calCells().forEach((d,i,arr)=>{
     const md=1100+d,day=DAY_BY_MD[md];
-    if(!day)h+=`<div class="cell out"><div class="dn">${d}</div></div>`;else{
+    if(!day)h+=`<div class="cell out"><div class="dn">${d>0?d:d+31}</div></div>`;else{
     const we=day.w===0||day.w===6;const a=offBy[md],p=pickBy[md];
     let cls="",body="";
     if(a&&!draft.decline.has(a.id)){cls="ok";body=`<b>${a.k}</b>${tm2(a.t)}`;}
@@ -449,7 +451,7 @@ function renderMe(){
       cls=n?"op":"";body=n?`<b>${n}</b><span>可選</span>`:`<span class="off">休</span>`;}
     else body=`<span class="off">休</span>`;
     h+=`<button class="cell mine-cal ${cls}${selMe===md?" sel":""}" data-day="${md}" aria-expanded="${selMe===md}"><div class="dn${we?" we":""}">${d}</div><div class="sb">${body}</div></button>`;}
-    if((i%7===6||i===arr.length-1)&&ph&&Math.floor((selMe-1102)/7)===Math.floor(i/7))h+=`<div class="expand" id="dayp">${ph}</div>`;
+    if((i%7===6||i===arr.length-1)&&ph&&Math.floor((selMe-1095)/7)===Math.floor(i/7))h+=`<div class="expand" id="dayp">${ph}</div>`;
   });
   h+=`</div>`;
   if(!ph)h+=`<p class="note">點日曆上的日期會在那一週下面展開，可以改「不能」或補選那天的班。</p>`;
@@ -502,8 +504,9 @@ document.addEventListener("input",e=>{if(e.target.id==="note"){draft.note=e.targ
 
 /* ---------- 主管自己調班：檢查通過就直接改正式班表 ---------- */
 function ownerIssues(eff,c){
-  const out=[...c.hard,...c.soft];
   const days=new Set([...[...draft.decline].map(id=>ASSIGN[id]&&ASSIGN[id].md).filter(Boolean),...[...draft.pick.values()].map(p=>p.md)]);
+  const wks=new Set([...days].map(weekOf)); // 每週天數只擋這次有動到的週（之前已接受的週不擋）
+  const out=[...c.hard,...c.soft.filter(m=>{const mm=m.match(/^11\/(\d+) 那週/);return !mm||wks.has(+mm[1]);})];
   for(const md of [...days].sort()){
     const list=Object.entries(ASSIGN).filter(([id,a])=>a.md===md&&!draft.decline.has(id)).map(([,a])=>a);
     for(const p of draft.pick.values())if(p.md===md)list.push({md,pi:0,r:"主管",s:p.s,e:p.e,t:p.t});
@@ -578,7 +581,7 @@ function personCal(pi,items){
   let h=`<div class="pcal"><div class="row" style="justify-content:space-between"><b>${esc(P.n)} 核准後的 11 月</b><span class="chip ${eff.length<P.up?"no":eff.length>P.up?"wait":"ok"}">應上 ${P.up}｜現在 ${off.length} → 核准後 ${eff.length}</span></div><div class="cal">${calHead()}`;
   for(const d of calCells()){
     const md=1100+d,day=DAY_BY_MD[md];
-    if(!day){h+=`<div class="cell out"><div class="dn">${d}</div></div>`;continue;}
+    if(!day){h+=`<div class="cell out"><div class="dn">${d>0?d:d+31}</div></div>`;continue;}
     const a=offBy[md],p=pickBy[md];let cls="",body=`<span class="off">休</span>`;
     if(a&&!decl.has(a.id)){cls="ok";body=`<b>${a.k}</b>${tm2(a.t)}`;}
     else if(p){cls="pk";body=`<b>補${p.k}</b>${tm2(p.t)}`;}
