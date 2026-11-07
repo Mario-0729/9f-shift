@@ -471,11 +471,11 @@ function renderMe(target,merged){
   }
 
   if(compact&&!(selMe!==null&&editDay===selMe))ph=selMe!==null&&DAY_BY_MD[selMe]?`<div class="editrow"><button class="lnk" data-editday="${selMe}">換這天的班</button></div>`:""; // 已送審／已審核：時間軸已標出自己的班，要換才展開
-  if(diff>0)h+=`<div class="banner warn" id="gap"><b>還少 ${diff} 班</b>：點紅色日期可以改上同一天的其他時段，或點<b>虛線框（可選）</b>的日期補班。</div>`;
+  if(diff>0&&!merged)h+=`<div class="banner warn" id="gap"><b>還少 ${diff} 班</b>：點紅色日期可以改上同一天的其他時段，或點<b>虛線框（可選）</b>的日期補班。</div>`;
   let cells=null;
   if(merged){cells={};for(const d of DAYS){const md=d.md,a=offBy[md],p=pickBy[md];
     if(a&&!draft.decline.has(a.id))cells[md]="ok";else if(p)cells[md]=pend.p.has(p.key)?"pk pend":"pk";else if(a)cells[md]=pend.d.has(a.id)?"no pend":"no";
-    else if(diff>0&&slotsBy[md]&&slotsBy[md].some(s=>!pickBlock(me,s,draft.decline,picks)))cells[md]="op";}
+}
     h=h.replace(`<button class="back" data-go="all">← 回總班表</button>`,"");
     const legendAt=h.indexOf('<div class="legend">');if(legendAt>=0)h=h.slice(0,legendAt)+h.slice(h.indexOf("</div>",legendAt)+6);
     h=nextCard(me,eff)+h;}
@@ -497,7 +497,7 @@ function renderMe(target,merged){
   });
   if(!merged){h+=`</div>`;
   if(!ph)h+=`<p class="note">點日曆上的日期會在那一週下面展開，可以改「不能」或補選那天的班。</p>`;}
-  const top=h;if(merged)h="";
+  const top=h;if(merged){h="";if(diff>0&&!compact)h+=`<div class="banner warn" id="gap"><b>還少 ${diff} 班</b>：點同一天可以改別的時段，或點其他休假日補班。</div>`;}
   if(compact){const pendN=pend.d.size+pend.p.size;
     h=flashHtml();
     renderAll(main,{cells,ph,top,bottom:h,needPick:false,hasPend:pendN>0});return;}
@@ -515,24 +515,24 @@ function renderMe(target,merged){
     h+=`<div class="sendbox">${flashHtml()}<div class="msg" style="white-space:pre-line">${esc(msg)}</div><div class="acts">
     <button class="btn ok" data-oapply="1" ${changes===0||iss.length||sending?"disabled":""}>${sending?"套用中…":"同意，直接改正式班表"}</button>
     ${changes?`<button class="btn" data-reset="1">取消變更</button>`:""}
-    ${merged?"":`<button class="btn" data-go="all">← 回總班表</button>`}</div></div>`;if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick:diff>0,hasPend:pend.d.size+pend.p.size>0});return;}main.innerHTML=h;return;}
+    ${merged?"":`<button class="btn" data-go="all">← 回總班表</button>`}</div></div>`;if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick:false,hasPend:pend.d.size+pend.p.size>0});return;}main.innerHTML=h;return;}
   h+=`<div class="sendbox">${flashHtml()}<div class="msg">${esc(msg)}</div><div class="acts">
     <button class="btn pri" data-submit="1" ${dis?"disabled":""}>${sending?"送出中…":label}</button>
     ${changes?`<button class="btn" data-reset="1">取消變更</button>`:""}
     ${canCompact?`<button class="btn" data-editclose="1">${changes?"取消換班並收起":"收起換班"}</button>`:""}
     ${merged?"":`<button class="btn" data-go="all">← 回總班表</button>`}</div></div>`;
-  if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick:diff>0,hasPend:pend.d.size+pend.p.size>0});return;}
+  if(merged){renderAll(main,{cells,ph,top,bottom:h,needPick:false,hasPend:pend.d.size+pend.p.size>0});return;}
   main.innerHTML=h;
 }
 function showPanel(id){const p=$(id||"dayp");if(!p)return;const r=p.getBoundingClientRect();
   if(r.bottom>window.innerHeight-70){const sm=matchMedia("(prefers-reduced-motion: reduce)").matches;p.scrollIntoView({behavior:sm?"auto":"smooth",block:r.height>window.innerHeight-200?"start":"end"});}}
 document.addEventListener("click",e=>{
   const t=e.target.closest("button");if(!t)return;
-  if(t.dataset.allday){const md=+t.dataset.allday;selAll=selAll===md?null:md;if(view==="all"&&!isViewer&&me!==null){selMe=selAll;editDay=null;}render();if(selAll)showPanel();}
+  if(t.dataset.allday){const md=+t.dataset.allday;selAll=selAll===md?null:md;if(view==="all"&&!isViewer&&me!==null){selMe=selAll;editDay=null;render();}else{render();if(selAll)showPanel();}}
   else if(t.dataset.day){const md=+t.dataset.day;selMe=selMe===md?null:md;render();if(selMe)showPanel("dayme");}
   else if(t.dataset.ok){draft.decline.delete(t.dataset.ok);dirty=true;render();}
-  else if(t.dataset.no){draft.decline.add(t.dataset.no);dirty=true;selMe=null;render();const g=$("gap");if(g)g.scrollIntoView({block:"nearest"});}
-  else if(t.dataset.pick){const s=choices(me).find(x=>x.key===t.dataset.pick);if(s){draft.pick.set(s.key,s);dirty=true;selMe=null;render();}}
+  else if(t.dataset.no){draft.decline.add(t.dataset.no);dirty=true;if((view==="all"&&!isViewer&&me!==null)){render();}else{selMe=null;render();const g=$("gap");if(g)g.scrollIntoView({block:"nearest"});}}
+  else if(t.dataset.pick){const s=choices(me).find(x=>x.key===t.dataset.pick);if(s){draft.pick.set(s.key,s);dirty=true;if(!(view==="all"&&!isViewer&&me!==null))selMe=null;render();}}
   else if(t.dataset.unpick){draft.pick.delete(t.dataset.unpick);dirty=true;render();}
   else if(t.dataset.submit){editDay=null;submit();}
   else if(t.dataset.editday){editDay=+t.dataset.editday;render();}
