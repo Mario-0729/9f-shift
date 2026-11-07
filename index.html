@@ -187,6 +187,7 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
 .pinrow input{min-width:0}
 .verrow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 10px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
 .verrow .acts{display:flex;gap:6px}
+.verpager{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
 .verdiff{background:var(--bg);border-radius:8px;padding:8px 10px;font-size:13px;display:flex;flex-direction:column;gap:2px}
 .pinval{font-family:var(--f-mono);font-size:16px;font-weight:600;letter-spacing:.15em}
 @media (prefers-reduced-motion:no-preference){.shift{transition:background .15s}}
@@ -816,14 +817,14 @@ function decAssign(str){const o={};if(!str)return o;
     o[`${md}-${pi}`]={md,pi,n:P.n,r:P.r,t,k,s:s0,e:e0};}
   return o;}
 function pushVersion(pl,note){const v=(pl.versions=pl.versions||[]);v.unshift({at:Date.now(),note,a:encAssign(pl.assign||{})});if(v.length>VMAX)v.length=VMAX;}
-let VERS=[],verOpen=null,verArm=null;
+let VERS=[],verOpen=null,verArm=null,verPage=0;const VPAGE=5;
 function verDiff(oldA,newA){ // 從 oldA 變成 newA 的差異
   const ch=[];const keys=new Set([...Object.keys(oldA),...Object.keys(newA)]);
   for(const k of keys){const o=oldA[k],n=newA[k];if(o&&n&&o.t===n.t)continue;const x=n||o;ch.push({md:x.md,pi:x.pi,n:x.n,from:o?o.t:"休",to:n?n.t:"休"});}
   return ch.sort((a,b)=>a.md-b.md||a.pi-b.pi);}
 async function saveVersion(){const note=(($("vnote")||{}).value||"").trim()||"手動存版";
   busyAdmin=true;toast("存版本中…","busy");
-  try{await mutate(pl=>{pushVersion(pl,note);});busyAdmin=false;toast("已存成新版本");}catch(e){busyAdmin=false;toast(e&&e.msg||("存版本失敗："+(e&&e.code||"錯誤")),"err");}}
+  try{await mutate(pl=>{pushVersion(pl,note);});verPage=0;busyAdmin=false;toast("已存成新版本");}catch(e){busyAdmin=false;toast(e&&e.msg||("存版本失敗："+(e&&e.code||"錯誤")),"err");}}
 async function restoreVersion(i){
   if(verArm!==i){verArm=i;render();return;}
   verArm=null;const v=VERS[i];if(!v)return;busyAdmin=true;toast("還原中…","busy");
@@ -834,11 +835,14 @@ function versionsHtml(){
   let h=`<h2>班表版本</h2><div class="card"><p class="note" style="margin:0">每次核准都會自動存一版，也可以自己存一版並寫上名稱。最多保留最近 ${VMAX} 版。還原時會先自動保存目前的班表，不怕還原錯。</p>
     <div class="row"><input id="vnote" class="reply" style="flex:1;min-width:0" maxlength="30" placeholder="版本名稱，例如：11 月定稿"><button class="btn pri" data-vsave="1" ${busyAdmin?"disabled":""}>存目前版本</button></div>`;
   if(!VERS.length)h+=`<div class="empty" style="padding:12px">還沒有任何版本，先按「存目前版本」存一份。</div>`;
-  VERS.forEach((v,i)=>{const A=decAssign(v.a);const d=verDiff(A,ASSIGN);const cnt=Object.keys(A).length;
+  const vpages=Math.max(1,Math.ceil(VERS.length/VPAGE));if(verPage>=vpages)verPage=vpages-1;if(verPage<0)verPage=0;
+  const vfrom=verPage*VPAGE;
+  VERS.slice(vfrom,vfrom+VPAGE).forEach((v,j)=>{const i=vfrom+j;const A=decAssign(v.a);const d=verDiff(A,ASSIGN);const cnt=Object.keys(A).length;
     h+=`<div class="verrow"><div><b class="tm">${fmtAt(v.at)}</b> <span>${esc(v.note||"")}</span><div class="note" style="margin:0">${cnt} 班｜${d.length?`跟現在差 ${d.length} 處`:"跟現在一樣"}</div></div>
       <div class="acts"><button class="btn" data-vview="${i}">${verOpen===i?"收起":"看差異"}</button>${d.length?`<button class="btn ${verArm===i?"no":""}" data-vrestore="${i}" ${busyAdmin?"disabled":""}>${verArm===i?"確定還原？再按一次":"還原這版"}</button>`:""}</div></div>`;
     if(verOpen===i)h+=d.length?`<div class="verdiff">${d.map(x=>`<div>${fmtMd(x.md)}（${WD[DAY_BY_MD[x.md].w]}） <b>${esc(x.n)}</b>：這版 <span class="tm">${x.from}</span> → 現在 <span class="tm">${x.to}</span></div>`).join("")}</div>`:`<div class="verdiff">跟現在的班表完全一樣。</div>`;
   });
+  if(vpages>1)h+=`<div class="verpager"><button class="btn" data-vpage="${verPage-1}" ${verPage===0?"disabled":""}>← 較新</button><span class="note" style="margin:0">第 ${verPage+1} / ${vpages} 頁（共 ${VERS.length} 版）</span><button class="btn" data-vpage="${verPage+1}" ${verPage>=vpages-1?"disabled":""}>較舊 →</button></div>`;
   return h+`</div>`;
 }
 let restoreArm=false;
@@ -877,6 +881,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   else if(t.dataset.setpin){const pi=t.dataset.setpin;setPin(pi,($("pin-"+pi)||{}).value||"");}
   else if(t.dataset.restore)restoreBackup();
   else if(t.dataset.vsave)saveVersion();
+  else if(t.dataset.vpage!==undefined){verPage=+t.dataset.vpage;verOpen=null;verArm=null;render();}
   else if(t.dataset.vview){const i=+t.dataset.vview;verOpen=verOpen===i?null:i;render();}
   else if(t.dataset.vrestore)restoreVersion(+t.dataset.vrestore);
   else if(t.dataset.setup)setupStore();
