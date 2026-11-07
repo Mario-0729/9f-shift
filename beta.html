@@ -126,7 +126,7 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
 .nextcard .big small{font-size:12px;font-weight:700;background:var(--accent);color:var(--accent-ink);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:3px}
 .nextcard .more{font-size:13px;color:var(--muted);font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .nextcard .stats{display:flex;gap:14px;font-size:13px;color:var(--muted);flex-wrap:wrap}.nextcard .stats b{color:var(--fg)}
-.mybox{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0 10px;background:var(--panel)}
+.mybox{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:12px 0 2px;background:var(--panel)}
 .mybox>.k{font-weight:700;color:var(--fg);margin-bottom:4px}
 .mine-cal .sb{display:flex;flex-direction:column;align-items:center;gap:0;line-height:1.2;font-family:var(--f-mono);font-size:11px;font-variant-numeric:tabular-nums}
 .mine-cal .sb b{font-family:var(--f-body);font-size:12px}
@@ -377,7 +377,7 @@ function tlPanel(md,byDay,opt={}){
   const track=inner=>`<div class="trk" style="${grid}">${peaks}${inner}</div>`;
   const nLive=list.filter(a=>a.chg!=="del").length;
   h+=`<div class="dhead">${opt.review?"":`<h2>${fmtMd(sel)}（週${WD[day.w]}）</h2><button class="x" data-allday="${sel}" aria-label="收合">收合 ▲</button>`}
-    <div class="dmeta">${op.train?`<span><b>員工訓練日</b>（還沒開幕）</span><span>訓練 <b class="tm">${op.t}</b></span>`:`<span>營業 <b class="tm">${op.t}</b></span><span>開場準備 ${hl(op.o[0]-0.5)}:30</span><span><i class="pkk"></i>尖峰 ${op.pkt}</span>`}<span>上班 ${nLive} 人</span></div></div>${opt.mine||""}`;
+    <div class="dmeta">${op.train?`<span><b>員工訓練日</b>（還沒開幕）</span><span>訓練 <b class="tm">${op.t}</b></span>`:`<span>營業 <b class="tm">${op.t}</b></span><span>開場準備 ${hl(op.o[0]-0.5)}:30</span><span><i class="pkk"></i>尖峰 ${op.pkt}</span>`}<span>上班 ${nLive} 人</span></div></div>`;
   h+=`<div class="tlw"><div class="tl">`;
   // 時間刻度
   let ticks="";for(let x=lo;x<=hi;x+=2)ticks+=`<span style="left:${pct(x)}">${hl(x)}</span>`;
@@ -396,7 +396,7 @@ function tlPanel(md,byDay,opt={}){
         ${track(`<span class="bar ${RK[a.r]}${a.pi===me?" mine":""}${a.chg?" c-"+a.chg:""}" style="left:${pct(a.s)};width:${wid(a.s,a.e)}">${a.chg==="del"?`<em>請假</em>`:len>=6?`<em>${a.k}班 ${len}h</em>`:`<em>${len}h</em>`}</span>`)}`;
     }
   }
-  h+=`</div></div>`;
+  h+=`</div></div>${opt.mine||""}`;
   return h;
 }
 function nextCard(pi,eff){
