@@ -101,7 +101,9 @@ textarea{width:100%;min-height:64px;resize:vertical}
 .cell{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 3px 5px;display:flex;flex-direction:column;align-items:stretch;gap:3px;font:inherit;color:var(--fg);text-align:left;cursor:pointer;min-height:64px}
 .cell.out{background:transparent;border-style:dashed;opacity:.45;cursor:default}
 .cell.sel{outline:2px solid var(--sel);outline-offset:0}
-.cell.today .dn{color:var(--accent)}
+.cell.today{background:var(--pick-bg);border:2px solid var(--accent);padding:3px 2px 4px}
+.cell.today .dn .d{background:var(--accent);color:var(--accent-ink);border-radius:99px;padding:2px 4px;margin:-2px 0 0 -2px}
+.cell.today .dn small{color:var(--accent);font-weight:700;white-space:nowrap;letter-spacing:-.04em}
 .dn{font-family:var(--f-mono);font-size:13px;font-weight:600;line-height:1;display:flex;justify-content:space-between;align-items:baseline;padding:0 2px;font-variant-numeric:tabular-nums}
 .dn small{font-family:var(--f-body);font-size:10px;color:var(--muted);font-weight:500}
 .names{display:flex;flex-direction:column;gap:1px}
@@ -341,7 +343,7 @@ function renderAll(){
     if(!day)h+=`<div class="cell out"><div class="dn">${d}</div></div>`;
     else{const list=byDay[md]||[];const we=day.w===0||day.w===6;
     h+=`<button class="cell all${selAll===md?" sel":""}${md===tmd?" today":""}" data-allday="${md}" aria-expanded="${selAll===md}">
-      <div class="dn${we?" we":""}">${d}<small>${list.length}人</small></div>
+      <div class="dn${we?" we":""}">${md===tmd?`<span class="d">${d}</span>`:d}<small>${md===tmd?"今天":list.length+"人"}</small></div>
       <div class="names">${list.map(a=>`<i class="nm ${RK[a.r]}${a.pi===me?" mine":""}">${esc(shortN(a.n))}</i>`).join("")}</div></button>`;}
     if((i%7===6||i===arr.length-1)&&selAll&&Math.floor((selAll-1102)/7)===Math.floor(i/7))h+=`<div class="expand" id="dayp">${panel}</div>`;
   });
