@@ -197,6 +197,10 @@ i.k{display:inline-block;width:10px;height:10px;border-radius:2px;border-left:10
 .bar.c-del{background:repeating-linear-gradient(135deg,var(--muted) 0 4px,transparent 4px 8px)!important;opacity:.6}
 .bar.c-del em{color:var(--fg)}
 .bar.c-add{box-shadow:0 0 0 2px var(--ok)}
+.lab .zn,.zgap .zn{font-style:normal;font-size:10px;line-height:1.4;vertical-align:2px;font-weight:700;margin-left:4px;padding:0 4px;border-radius:3px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.zgap{margin:10px 0 2px;padding:8px 10px;border-radius:10px;border:1px solid var(--warn);background:var(--warn-bg);font-size:13px;display:flex;flex-direction:column;gap:3px}
+.zgap.ok{border-color:var(--ok);background:var(--ok-bg)}
+.zgap .zn{margin:0 6px 0 0;color:var(--fg)}.zgap small{color:var(--muted);font-size:11px}
 .lab small{font-size:10px;font-weight:700;margin-left:4px;padding:0 4px;border-radius:3px}
 .lab.c-del b{text-decoration:line-through;color:var(--muted)}.lab.c-del small{background:var(--no-bg);color:var(--no);display:inline-block;text-decoration:none}
 .lab.c-add small{background:var(--ok-bg);color:var(--ok)}
@@ -371,6 +375,17 @@ function renderAll(target,M){
   if(M)h+=M.bottom;
   (target||$("main")).innerHTML=h;
 }
+let POS={};const ZONES=["櫃檯","6軸賽車","飄移車","1樓曲棍球"];
+const fmtT=x=>`${String(Math.floor(x)%24).padStart(2,"0")}:${x%1?"30":"00"}`;
+function zonePlan(list,op){ // 正職固定位置；兼職依上班先後補「這班時間內缺最久」的區（同分優先 1 樓曲棍球）。未扣休息時間
+  const o=op.o[0],c=op.o[1],zone={};
+  list.forEach(a=>{if(a.r!=="兼職")zone[a.pi]=POS[a.pi]||"";});
+  const cover=(z,t)=>list.some(a=>zone[a.pi]===z&&a.s<=t&&a.e>=t+.5);
+  for(const a of list.filter(a=>a.r==="兼職").sort((x,y)=>x.s-y.s)){let best="",bv=-1;
+    for(const z of ["1樓曲棍球","櫃檯","飄移車","6軸賽車"]){let v=0;for(let t=Math.max(a.s,o);t<Math.min(a.e,c);t+=.5)if(!cover(z,t))v++;if(v>bv){bv=v;best=z;}}
+    zone[a.pi]=best;}
+  const gaps=[];for(const z of ZONES){let st=null;for(let t=o;t<=c;t+=.5){const miss=t<c&&!cover(z,t);if(miss&&st===null)st=t;if(!miss&&st!==null){gaps.push([z,st,t]);st=null;}}}
+  return {zone,gaps};}
 function tlPanel(md,byDay,opt={}){
   let h="";const sel=md;
   const day=DAY_BY_MD[sel],list=byDay[sel]||[],op=OPEN[day.type];
@@ -380,6 +395,7 @@ function tlPanel(md,byDay,opt={}){
   const peaks=op.pk.map(([a,b])=>`<span class="pk" style="left:${pct(a)};width:${wid(a,b)}"></span>`).join("");
   const track=inner=>`<div class="trk" style="${grid}">${peaks}${inner}</div>`;
   const nLive=list.filter(a=>a.chg!=="del").length;
+  const zp=op.train?null:zonePlan(list.filter(a=>a.chg!=="del"),op);
   h+=`<div class="dhead">${opt.review?"":`<h2>${fmtMd(sel)}（週${WD[day.w]}）</h2><button class="x" data-allday="${sel}" aria-label="收合">收合 ▲</button>`}
     <div class="dmeta">${op.train?`<span><b>員工訓練日</b>（還沒開幕）</span><span>訓練 <b class="tm">${op.t}</b></span>`:`<span>營業 <b class="tm">${op.t}</b></span><span>開場準備 ${hl(op.o[0]-0.5)}:30</span><span><i class="pkk"></i>尖峰 ${op.pkt}</span>`}<span>上班 ${nLive} 人</span></div></div>`;
   h+=`<div class="tlw"><div class="tl">`;
@@ -396,11 +412,15 @@ function tlPanel(md,byDay,opt={}){
     for(const a of rows){
       const len=a.e-a.s;
       const tag=a.chg==="del"?"請假":a.chg==="add"?"新加入":"";
-      h+=`<div class="lab${a.pi===me?" mine":""}${a.chg?" c-"+a.chg:""}"><b>${esc(a.r==="主管"?"主管":a.n)}${tag?`<small>${tag}</small>`:""}</b><span class="tm">${a.t}</span></div>
+      const zn=zp&&a.chg!=="del"&&zp.zone[a.pi]?`<i class="zn">${zp.zone[a.pi]}</i>`:"";
+      h+=`<div class="lab${a.pi===me?" mine":""}${a.chg?" c-"+a.chg:""}"><b>${esc(a.r==="主管"?"主管":a.n)}${tag?`<small>${tag}</small>`:""}${zn}</b><span class="tm">${a.t}</span></div>
         ${track(`<span class="bar ${RK[a.r]}${a.pi===me?" mine":""}${a.chg?" c-"+a.chg:""}" style="left:${pct(a.s)};width:${wid(a.s,a.e)}">${a.chg==="del"?`<em>請假</em>`:len>=6?`<em>${a.k}班 ${len}h</em>`:`<em>${len}h</em>`}</span>`)}`;
     }
   }
-  h+=`</div></div>${opt.mine||""}`;
+  h+=`</div></div>`;
+  if(zp){const by={};zp.gaps.forEach(([z,a,b])=>(by[z]=by[z]||[]).push(`${fmtT(a)}–${fmtT(b)}`));
+    h+=Object.keys(by).length?`<div class="zgap"><b>缺人區塊</b>${ZONES.filter(z=>by[z]).map(z=>`<div><span class="zn">${z}</span>${by[z].join("、")}</div>`).join("")}<small>兼職自動補空位，優先 1 樓曲棍球；未扣休息時間。</small></div>`:`<div class="zgap ok"><b>四區全時段都有人 ✓</b><small>未扣休息時間。</small></div>`;}
+  h+=opt.mine||"";
   return h;
 }
 function nextCard(pi,eff,edit){
@@ -765,7 +785,7 @@ const FS_PROJECT="star-9f",FS_KEY="AIzaSyDP_bOCn7eLWzWeK0_Yzsv7RxPsBtfzluI";
 const API=`https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents/shift/main?key=${FS_KEY}`;
 async function putJson(obj){const w=await fetch(API,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({fields:{blob:{stringValue:JSON.stringify(obj)}}})});if(!w.ok)throw{code:"連線 "+w.status};}
 let DK=null,DKraw=null,PINSET={},lastLoad=0,loginState=null; // loginState: {matches:[pi], pin}
-function applyPayload(p){VERS=p.versions||[];PEOPLE=(p.people||[]).map(([n,r,up,from,gone],i)=>({n,r,up,i,from,gone:!!gone}));ASSIGN=p.assign||{};REQ=p.req||{};PINSET=p.pinSet||{};
+function applyPayload(p){VERS=p.versions||[];POS=p.pos||{};PEOPLE=(p.people||[]).map(([n,r,up,from,gone],i)=>({n,r,up,i,from,gone:!!gone}));ASSIGN=p.assign||{};REQ=p.req||{};PINSET=p.pinSet||{};
   loaded.a=loaded.r=true;lastLoad=Date.now();render();}
 let readOnly=false;
 async function getJson(){let r=null;try{r=await fetch(API,{cache:"no-store",headers:{Accept:"application/json"}});}catch(e){}
